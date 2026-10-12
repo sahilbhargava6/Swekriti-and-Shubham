@@ -1,71 +1,67 @@
 /* =====================================================================
    CONFIG — edit the invitation content here.
-   Each event becomes one page of the card. Pages turn with a page curl.
+   Each entry is one page of the card, in order. Pages turn with a page curl.
 
-   illustration: optional image for the bottom of the card (e.g. the
-                 Haldi illustration exported from Figma as a transparent PNG).
-                 If the file is missing, a drawn placeholder is shown.
-   address:      shown in the venue box under the card.
-   mapQuery:     searched in Google Maps when the address is tapped;
-                 or set mapUrl to an exact "Share → Copy link" pin from Google Maps.
-   cardImage:    optional full-card image (an export of the whole
-                 "iPhone 16 - 1" card). When set, it replaces the HTML page.
+   cardImage: the full page image (in /pages).
+   venue/city: shown on the venue box under the card.
+   address:   revealed when the venue box is tapped.
+   mapQuery:  searched in Google Maps when the address is tapped;
+              or set mapUrl to an exact "Share → Copy link" pin from Google Maps.
+   theme:     tints the background and venue box for that page.
+
+   Pages can also be built from HTML instead of an image: leave cardImage
+   empty and fill kicker/title/subtitle/blessing/day/month/date/year/time/
+   closing/illustration (see pageHTML below).
    ===================================================================== */
 const CONFIG = {
   monogram: 'S',
+  sealImage: 'seal.png', // wax seal on the envelope (falls back to a drawn seal if missing)
   events: [
     {
+      title: 'Wedding Invitation',
+      cardImage: 'pages/page-1.jpg',
+      theme: 'invite',
+      venue: 'The Ritz', city: 'Moti Nagar',
+      address: 'The Ritz, Moti Nagar, New Delhi',
+      mapQuery: 'The Ritz, Moti Nagar, New Delhi',
+    },
+    {
+      title: 'Tel-Madha Bhaat',
+      cardImage: 'pages/page-2.jpg',
       theme: 'haldi',
-      kicker: 'Please join us for a',
-      title: 'Haldi',
-      subtitle: 'Ceremony',
-      blessing: 'Haldi ke rang, apno ke sang — come shower us with turmeric, laughter and love.',
-      day: 'Thursday', month: 'May', date: '16', year: '2024', time: '11:00 AM',
-      venue: 'The Grand Taj', city: 'Jaipur',
-      address: 'Add the street address, Jaipur, Rajasthan',
-      mapQuery: 'The Grand Taj, Jaipur', // what Google Maps searches for (or set mapUrl to a shared pin link)
-      closing: 'Let’s get yellow & mellow',
-      illustration: 'assets/haldi.png',
-      cardImage: null,
+      venue: 'Hotel Palm Grand', city: 'Naraina',
+      address: 'Hotel Palm Grand, Naraina, New Delhi',
+      mapQuery: 'Hotel Palm Grand, Naraina, New Delhi',
     },
     {
-      theme: 'mehendi',
-      kicker: 'Please join us for the',
-      title: 'Mehendi',
-      subtitle: 'Evening',
-      blessing: 'An evening of henna, music and dance as we colour our hands with love.',
-      day: 'Thursday', month: 'May', date: '16', year: '2024', time: '5:00 PM',
-      venue: 'The Grand Taj', city: 'Jaipur',
-      address: 'Add the street address, Jaipur, Rajasthan',
-      mapQuery: 'The Grand Taj, Jaipur', // what Google Maps searches for (or set mapUrl to a shared pin link)
-      closing: 'Come dressed in green',
-      illustration: 'assets/mehendi.png',
-      cardImage: null,
+      title: 'Ring Ceremony & Mehandi Night',
+      cardImage: 'pages/page-3.jpg',
+      theme: 'ring',
+      venue: 'The Ritz', city: 'Moti Nagar',
+      address: 'Glass House, 2nd floor — The Ritz, Moti Nagar, New Delhi',
+      mapQuery: 'The Ritz, Moti Nagar, New Delhi',
     },
     {
-      theme: 'wedding',
-      kicker: 'Please join us for the',
-      title: 'Shubh Vivah',
-      subtitle: 'Wedding',
-      blessing: 'We request the honour of your presence as we begin our forever together.',
-      day: 'Friday', month: 'May', date: '17', year: '2024', time: '7:00 PM',
-      venue: 'The Grand Taj', city: 'Jaipur',
-      address: 'Add the street address, Jaipur, Rajasthan',
-      mapQuery: 'The Grand Taj, Jaipur', // what Google Maps searches for (or set mapUrl to a shared pin link)
-      closing: 'With love & gratitude',
-      illustration: 'assets/wedding.png',
-      cardImage: null,
+      title: 'Wedding Celebration',
+      cardImage: 'pages/page-4.jpg',
+      theme: 'celebration',
+      venue: 'The Ritz', city: 'Moti Nagar',
+      address: 'Pearl Hall, 1st floor — The Ritz, Moti Nagar, New Delhi',
+      mapQuery: 'The Ritz, Moti Nagar, New Delhi',
     },
   ],
 };
 
 const THEMES = {
+  invite:      { accent: '#a0283a', deep: '#7e1d2c', bg: '#f3ead9' },
+  ring:        { accent: '#2c3a78', deep: '#1f2a5c', bg: '#e8e5ee' },
+  celebration: { accent: '#6a4387', deep: '#553270', bg: '#e6efec' },
   haldi:   { accent: '#e9a514', deep: '#c27a12', drape1: '#fbe7ab', drape2: '#f1c656', wash: '#f6cd45', bead1: '#f39a1e', bead2: '#f7c636', paste: '#f2b51c', bg: '#efe6cf' },
   mehendi: { accent: '#6e8f2c', deep: '#4b6a1d', drape1: '#e4ecc6', drape2: '#b9cd7f', wash: '#b4cb73', bead1: '#f39a1e', bead2: '#7da43c', paste: '#5d7a26', bg: '#e9ead5' },
   wedding: { accent: '#b4243f', deep: '#8a1a31', drape1: '#f9d8d8', drape2: '#e9a3ad', wash: '#efa1ae', bead1: '#d8314f', bead2: '#f2b53a', paste: '#c8304f', bg: '#f3e4df' },
 };
 
-const CARD_RATIO = 0.71; // width / height of the card
+const CARD_RATIO = 1240 / 1748; // width / height of the card (matches the page images)
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -669,6 +665,9 @@ function onPageChange(i) {
 /* ---------- init ---------- */
 function init() {
   drawBlossoms();
+  const img = new Image();
+  img.onload = () => seal.querySelectorAll('.seal-half').forEach((h) => { h.innerHTML = `<img src="${esc(CONFIG.sealImage)}" alt="" draggable="false">`; });
+  if (CONFIG.sealImage) img.src = CONFIG.sealImage;
   const sealFace = sealMarkup(CONFIG.monogram);
   seal.querySelectorAll('.seal-half').forEach((h) => { h.innerHTML = sealFace; });
 
