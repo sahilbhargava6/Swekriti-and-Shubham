@@ -287,60 +287,159 @@ body {
   transition-duration: 1.15s;
 }
 
-/* ---------- Book / page curl ---------- */
+/* ---------- 3D Book Page Roll ---------- */
 .book {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   border-radius: inherit;
-  touch-action: none;
+  perspective: 2000px;
+  transform-style: preserve-3d;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
   pointer-events: none;
 }
 .is-reading .book { pointer-events: auto; cursor: grab; }
 .is-reading .book:active { cursor: grabbing; }
 
-.page { position: absolute; inset: 0; visibility: hidden; background: #fbf6ee; }
+.page {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  background: #fbf6ee;
+  border-radius: inherit;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(90, 50, 40, .14);
+}
 .page.is-visible { visibility: visible; }
 
-.fold-shadow, .flap-shade {
+/* Spine crease shadow on every page */
+.page::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 26px;
+  background: linear-gradient(to right, rgba(50, 25, 20, .25) 0%, rgba(50, 25, 20, .08) 32%, transparent 100%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Cast shadow on the bottom page during a page turn */
+.under-shadow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  background: linear-gradient(to right, rgba(40, 20, 15, .42) 0%, rgba(40, 20, 15, .15) 35%, transparent 75%);
+  transition: opacity .08s ease;
+}
+
+/* The 3D Turning Leaf */
+.turning-leaf {
   position: absolute;
   left: 0;
   top: 0;
-  height: 4000px;
-  transform-origin: 0 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-}
-.fold-shadow {
-  z-index: 2;
+  z-index: 10;
   display: none;
-  background: linear-gradient(90deg, rgba(60, 35, 25, .38) 0%, rgba(60, 35, 25, .12) 35%, rgba(60, 35, 25, 0) 100%);
+  transform-style: preserve-3d;
 }
-.flap-wrap {
+.turning-leaf.is-active { display: block; }
+
+/* 4-segment rolling panels */
+.leaf-panel {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform-origin: left center;
+  will-change: transform;
+}
+.leaf-panel-0 {
+  left: 0;
+  width: 25%;
+}
+.leaf-panel-1, .leaf-panel-2, .leaf-panel-3 {
+  left: 100%;
+  width: 100%;
+}
+
+.panel-face {
   position: absolute;
   inset: 0;
-  z-index: 4;
-  display: none;
-  pointer-events: none;
-  filter: drop-shadow(0 0 10px rgba(70, 40, 30, .28));
+  overflow: hidden;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
-.flipping .fold-shadow, .flipping .flap-wrap { display: block; }
-.flap { position: absolute; left: 0; top: 0; width: 100%; height: 100%; transform-origin: 0 0; }
-.flap-back { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 40%, #fdf9f2, #f4eadb); }
-.flap-back-inner {
+
+.panel-front {
+  background: #fbf6ee;
+}
+
+.panel-back {
+  background: linear-gradient(135deg, #fdf8f0 0%, #f6ebdc 50%, #fdf8f0 100%);
+  transform: rotateY(180deg);
+}
+
+/* Sliced images inside each panel */
+.panel-img {
   position: absolute;
-  inset: 4%;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(200, 140, 150, .35);
-  transform: scaleX(-1); /* pre-mirrored: the fold reflection flips it back */
+  top: 0;
+  height: 100%;
+  width: 400%;
+  object-fit: cover;
+  pointer-events: none;
 }
-.flap-back-inner span { font-family: var(--script); font-size: 34cqw; color: rgba(196, 120, 140, .22); }
-.flap-shade {
-  background: linear-gradient(90deg,
-    rgba(80, 45, 35, .22) 0%,
-    rgba(255, 255, 255, .35) 9%,
-    rgba(255, 255, 255, 0) 32%,
-    rgba(80, 45, 35, .10) 100%);
+.leaf-panel-0 .panel-front .panel-img { left: 0%; }
+.leaf-panel-1 .panel-front .panel-img { left: -100%; }
+.leaf-panel-2 .panel-front .panel-img { left: -200%; }
+.leaf-panel-3 .panel-front .panel-img { left: -300%; }
+
+/* Back face of the card: luxury gold foil border & monogram watermark */
+.panel-back-inner {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 400%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.leaf-panel-0 .panel-back .panel-back-inner { left: -300%; }
+.leaf-panel-1 .panel-back .panel-back-inner { left: -200%; }
+.leaf-panel-2 .panel-back .panel-back-inner { left: -100%; }
+.leaf-panel-3 .panel-back .panel-back-inner { left: 0%; }
+
+.back-decor {
+  position: absolute;
+  inset: 3.5%;
+  border: 1px solid rgba(195, 140, 95, .4);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.back-monogram {
+  font-family: var(--script);
+  font-size: 32cqw;
+  color: rgba(190, 130, 85, .32);
+  transform: scaleX(-1);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, .7);
+}
+
+/* Dynamic Curvature Lighting Shading */
+.panel-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .05s;
 }
 
 /* ---------- Invitation page ---------- */
@@ -533,31 +632,6 @@ body {
 }
 .close-btn svg { width: 20px; height: 20px; }
 
-.dots { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; max-width: 92%; margin: 0 auto; }
-.dots button {
-  width: 7px;
-  height: 7px;
-  padding: 0;
-  border: 0;
-  border-radius: 7px;
-  background: rgba(180, 90, 120, .28);
-  cursor: pointer;
-  transition: width .4s var(--ease), background-color .4s;
-}
-.dots button[aria-selected="true"] { width: 22px; background: var(--accent, var(--rose)); }
-
-.turn-hint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-style: italic;
-  font-size: 15px;
-  color: #924b64;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, .95), 0 0 12px rgba(255, 255, 255, .9);
-  transition: opacity .6s;
-}
-.turn-hint.is-hidden { opacity: 0; }
 
 /* ---------- Venue box ---------- */
 .venue-box {

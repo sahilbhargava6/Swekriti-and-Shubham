@@ -277,9 +277,7 @@ function pageHTML(ev, i) {
 }
 
 /* =====================================================================
-   Book — portrait page curl.
-   The flipping page is clipped along a fold line; the part beyond the
-   fold is drawn as the paper's back, reflected across that line.
+   Book — 3D Book Page Roll with Compound Curvature & Dynamic Lighting
    ===================================================================== */
 class Book {
   constructor(el, pages, monogram, onChange) {
@@ -287,6 +285,10 @@ class Book {
     this.onChange = onChange;
     this.cur = 0;
     this.busy = false;
+    this.W = el.clientWidth || 370;
+    this.H = el.clientHeight || 520;
+
+    // Create page elements
     this.pages = pages.map((html) => {
       const p = document.createElement('section');
       p.className = 'page';
@@ -294,135 +296,182 @@ class Book {
       el.appendChild(p);
       return p;
     });
-    this.foldShadow = this.mk('fold-shadow', el);
-    this.flapWrap = this.mk('flap-wrap', el);
-    this.flap = this.mk('flap', this.flapWrap);
-    this.mk('flap-back', this.flap).innerHTML = `<div class="flap-back-inner"><span>${esc(monogram)}</span></div>`;
-    this.flapShade = this.mk('flap-shade', this.flap);
+
+    // Cast shadow on the bottom page during a turn
+    this.underShadow = document.createElement('div');
+    this.underShadow.className = 'under-shadow';
+    el.appendChild(this.underShadow);
+
+    // 4-panel 3D turning leaf
+    this.leaf = document.createElement('div');
+    this.leaf.className = 'turning-leaf';
+    this.panels = [];
+
+    let parent = this.leaf;
+    for (let i = 0; i < 4; i++) {
+      const panel = document.createElement('div');
+      panel.className = `leaf-panel leaf-panel-${i}`;
+
+      const front = document.createElement('div');
+      front.className = 'panel-face panel-front';
+      const frontImg = document.createElement('img');
+      frontImg.className = 'panel-img';
+      const frontShade = document.createElement('div');
+      frontShade.className = 'panel-shade';
+      front.appendChild(frontImg);
+      front.appendChild(frontShade);
+
+      const back = document.createElement('div');
+      back.className = 'panel-face panel-back';
+      const backInner = document.createElement('div');
+      backInner.className = 'panel-back-inner';
+      backInner.innerHTML = `<div class="back-decor"><span class="back-monogram">${esc(monogram)}</span></div>`;
+      const backShade = document.createElement('div');
+      backShade.className = 'panel-shade';
+      back.appendChild(backInner);
+      back.appendChild(backShade);
+
+      panel.appendChild(front);
+      panel.appendChild(back);
+      parent.appendChild(panel);
+
+      this.panels.push({
+        el: panel,
+        frontImg,
+        frontShade,
+        backShade
+      });
+
+      parent = panel; // Nested compound curvature
+    }
+
+    el.appendChild(this.leaf);
+
     this.show(0);
     this.bindPointer();
   }
 
-  mk(cls, parent) {
-    const d = document.createElement('div');
-    d.className = cls;
-    parent.appendChild(d);
-    return d;
-  }
-
   get count() { return this.pages.length; }
 
-  measure() { this.W = this.el.clientWidth; this.H = this.el.clientHeight; }
+  measure() {
+    this.W = this.el.clientWidth || 370;
+    this.H = this.el.clientHeight || 520;
+  }
 
   show(i) {
-    this.cur = i;
+    this.cur = clamp(i, 0, this.count - 1);
     this.pages.forEach((p, k) => {
-      p.classList.toggle('is-visible', k === i);
-      p.style.zIndex = k === i ? 1 : 0;
-      p.style.clipPath = '';
+      p.classList.toggle('is-visible', k === this.cur);
+      p.style.zIndex = k === this.cur ? 1 : 0;
     });
+    this.leaf.classList.remove('is-active');
+    this.underShadow.style.opacity = '0';
   }
 
-  begin(dir, cornerY) {
-    this.measure();
-    const flip = dir === 'fwd' ? this.cur : this.cur - 1;
-    const under = dir === 'fwd' ? this.cur + 1 : this.cur;
-    this.f = { dir, flip, under, C: { x: this.W, y: cornerY } };
+  // Setup the turning leaf with page images
+  setupLeaf(fromIdx, toIdx) {
+    const fromImg = this.pages[fromIdx].querySelector('img.full-card');
+    const imgSrc = fromImg ? fromImg.src : '';
+    this.panels.forEach((p) => {
+      p.frontImg.src = imgSrc;
+    });
+    // Bottom page sits visible underneath
     this.pages.forEach((p, k) => {
-      p.classList.toggle('is-visible', k === flip || k === under);
-      p.style.zIndex = k === flip ? 3 : 1;
+      p.classList.toggle('is-visible', k === fromIdx || k === toIdx);
+      p.style.zIndex = k === toIdx ? 1 : (k === fromIdx ? 2 : 0);
     });
-    this.el.classList.add('flipping');
+    this.leaf.classList.add('is-active');
   }
 
-  // keep the page attached at the spine (left edge)
-  constrain(P) {
-    const { W, H } = this, C = this.f.C;
-    const pin = (cx, cy, r) => {
-      const dx = P.x - cx, dy = P.y - cy, d = Math.hypot(dx, dy);
-      if (d > r) P = { x: cx + (dx / d) * r, y: cy + (dy / d) * r };
-    };
-    pin(0, C.y, W);
-    pin(0, H - C.y, Math.hypot(W, H));
-    return P;
+  // Render 3D cylindrical page roll at progress p (0 = flat right, 1 = flat left)
+  renderProgress(p) {
+    p = clamp(p, 0, 1);
+    const roll = Math.sin(p * Math.PI); // curvature envelope
+
+    // 4 compound joint angles
+    const a0 = -180 * Math.pow(p, 1.25);
+    const a1 = -roll * 28 * (1 - p * 0.45);
+    const a2 = -roll * 32 * (1 - p * 0.35);
+    const a3 = -roll * 24 * (1 - p * 0.25);
+
+    this.panels[0].el.style.transform = `rotateY(${a0.toFixed(2)}deg)`;
+    this.panels[1].el.style.transform = `rotateY(${a1.toFixed(2)}deg)`;
+    this.panels[2].el.style.transform = `rotateY(${a2.toFixed(2)}deg)`;
+    this.panels[3].el.style.transform = `rotateY(${a3.toFixed(2)}deg)`;
+
+    // Curvature lighting: specular highlight rolls across the panels
+    this.panels.forEach((panel, i) => {
+      const panelCenterP = (3 - i) * 0.25;
+      const dist = Math.abs(p - panelCenterP);
+      const highlight = Math.max(0, 1 - dist * 4) * roll * 0.45;
+      const shadow = roll * (0.12 + (i / 4) * 0.18);
+
+      if (p < 0.6) {
+        panel.frontShade.style.opacity = '1';
+        panel.frontShade.style.background = `linear-gradient(to right, rgba(0,0,0,${(shadow * 0.4).toFixed(3)}) 0%, rgba(255,255,255,${highlight.toFixed(3)}) 50%, rgba(0,0,0,${shadow.toFixed(3)}) 100%)`;
+      } else {
+        panel.frontShade.style.opacity = '0';
+      }
+
+      if (p > 0.4) {
+        panel.backShade.style.opacity = '1';
+        panel.backShade.style.background = `linear-gradient(to right, rgba(0,0,0,${shadow.toFixed(3)}) 0%, rgba(255,255,255,${(highlight * 0.8).toFixed(3)}) 50%, rgba(0,0,0,${(shadow * 0.5).toFixed(3)}) 100%)`;
+      } else {
+        panel.backShade.style.opacity = '0';
+      }
+    });
+
+    // Cast shadow sweeping onto the bottom page
+    this.underShadow.style.opacity = `${(roll * 0.55).toFixed(2)}`;
+    this.underShadow.style.width = `${Math.round(40 + roll * 45)}%`;
   }
 
-  render(P) {
-    const { W, H } = this, { C, flip } = this.f;
-    const page = this.pages[flip];
-    this.P = P;
-    const dx = C.x - P.x, dy = C.y - P.y, len = Math.hypot(dx, dy);
-    if (len < 0.5) {
-      page.style.clipPath = '';
-      this.flap.style.clipPath = 'polygon(0 0,0 0,0 0)';
-      this.foldShadow.style.opacity = 0;
-      return;
-    }
-    const n = { x: dx / len, y: dy / len };
-    const M = { x: (C.x + P.x) / 2, y: (C.y + P.y) / 2 };
-    const side = (p) => (p[0] - M.x) * n.x + (p[1] - M.y) * n.y; // > 0 → beyond the fold
-    const rect = [[0, 0], [W, 0], [W, H], [0, H]];
-    const keep = clipPoly(rect, (p) => -side(p));
-    const beyond = clipPoly(rect, side);
-
-    page.style.clipPath = polyCss(keep);
-    this.flap.style.clipPath = polyCss(beyond);
-    const k = 2 * (M.x * n.x + M.y * n.y);
-    this.flap.style.transform = `matrix(${1 - 2 * n.x * n.x},${-2 * n.x * n.y},${-2 * n.x * n.y},${1 - 2 * n.y * n.y},${k * n.x},${k * n.y})`;
-
-    const ang = (Math.atan2(n.y, n.x) * 180) / Math.PI;
-    const strip = `translate(${M.x}px,${M.y}px) rotate(${ang}deg) translate(0,-2000px)`;
-    const progress = clamp((C.x - P.x) / (2 * W), 0, 1);
-    this.flapShade.style.width = `${Math.max(len / 2, 1)}px`;
-    this.flapShade.style.transform = strip;
-    this.foldShadow.style.width = `${clamp(len / 2, 1, W * 0.45)}px`;
-    this.foldShadow.style.transform = strip;
-    this.foldShadow.style.opacity = Math.min(1, Math.sin(progress * Math.PI) * 1.6);
-  }
-
-  end(completed) {
-    const { dir, flip, under } = this.f;
-    let next = this.cur;
-    if (completed) next = dir === 'fwd' ? under : flip;
-    this.el.classList.remove('flipping');
-    this.f = null;
-    this.show(next);
-    if (completed) this.onChange(next);
-  }
-
-  tween(from, to, dur, ease, arc = 0) {
+  // Smooth tween animation
+  animateTurn(fromP, toP, dur = 750, ease = easeInOut) {
     return new Promise((resolve) => {
       const t0 = performance.now();
       const step = (now) => {
-        const t = clamp((now - t0) / dur, 0, 1), e = ease(t);
-        const P = {
-          x: from.x + (to.x - from.x) * e,
-          y: from.y + (to.y - from.y) * e - arc * Math.sin(Math.PI * e),
-        };
-        this.render(this.constrain(P));
-        if (t < 1) requestAnimationFrame(step); else resolve();
+        const elapsed = now - t0;
+        const t = clamp(elapsed / dur, 0, 1);
+        const p = fromP + (toP - fromP) * ease(t);
+        this.renderProgress(p);
+        if (t < 1) {
+          requestAnimationFrame(step);
+        } else {
+          resolve();
+        }
       };
       requestAnimationFrame(step);
     });
   }
 
-  async flip(dir, dur = 1100) {
+  async flip(dir, dur = 820) {
     if (this.busy) return;
-    if (dir === 'fwd' ? this.cur >= this.count - 1 : this.cur <= 0) return;
+    const target = dir === 'fwd' ? this.cur + 1 : this.cur - 1;
+    if (target < 0 || target >= this.count) return;
+
     this.busy = true;
     this.measure();
-    this.begin(dir, this.H);
-    const { W, H } = this;
-    const a = { x: W, y: H }, b = { x: -W, y: H };
-    await (dir === 'fwd' ? this.tween(a, b, dur, easeInOut, H * 0.32) : this.tween(b, a, dur, easeInOut, H * 0.32));
-    this.end(true);
+
+    if (dir === 'fwd') {
+      this.setupLeaf(this.cur, target);
+      await this.animateTurn(0, 1, dur, easeInOut);
+      this.show(target);
+      this.onChange(target);
+    } else {
+      this.setupLeaf(target, this.cur);
+      await this.animateTurn(1, 0, dur, easeInOut);
+      this.show(target);
+      this.onChange(target);
+    }
+
     this.busy = false;
   }
 
   async goTo(i) {
     if (this.busy || this.cur === i || i < 0 || i >= this.count) return;
     if (Math.abs(this.cur - i) === 1) {
-      await this.flip(i > this.cur ? 'fwd' : 'back', 700);
+      await this.flip(i > this.cur ? 'fwd' : 'back', 650);
     } else {
       this.busy = true;
       this.show(i);
@@ -431,87 +480,121 @@ class Book {
     }
   }
 
-  // little corner lift to show the page can be turned
   async tease() {
     if (this.busy || this.count < 2 || this.cur >= this.count - 1) return;
     this.busy = true;
-    this.begin('fwd', this.H);
-    const { W, H } = this;
-    await this.tween({ x: W, y: H }, { x: W * 0.8, y: H * 0.9 }, 650, easeOut);
-    await this.tween({ x: W * 0.8, y: H * 0.9 }, { x: W, y: H }, 550, easeInOut);
-    this.end(false);
+    this.measure();
+    this.setupLeaf(this.cur, this.cur + 1);
+    await this.animateTurn(0, 0.22, 600, easeOut);
+    await this.animateTurn(0.22, 0, 500, easeInOut);
+    this.show(this.cur);
     this.busy = false;
   }
 
   bindPointer() {
     const el = this.el;
-    const local = (e) => {
-      const r = el.getBoundingClientRect();
-      return { x: (e.clientX - r.left) * (this.W / r.width), y: (e.clientY - r.top) * (this.H / r.height) };
-    };
+    let drag = null;
+
     el.addEventListener('pointerdown', (e) => {
       if (this.busy) return;
       this.measure();
-      const p = local(e);
-      const dir = p.x > this.W / 2 ? 'fwd' : 'back';
+      const rect = el.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const isRightSide = x > this.W * 0.45;
+      const dir = isRightSide ? 'fwd' : 'back';
       const can = dir === 'fwd' ? this.cur < this.count - 1 : this.cur > 0;
-      this.drag = { dir: can ? dir : null, start: p, started: false, last: p, lastT: performance.now(), vx: 0, cornerY: p.y < this.H / 2 ? 0 : this.H };
+
+      drag = {
+        dir,
+        can,
+        startX: e.clientX,
+        startY: e.clientY,
+        lastX: e.clientX,
+        lastT: performance.now(),
+        vx: 0,
+        active: false,
+        progress: 0,
+      };
       el.setPointerCapture(e.pointerId);
     });
+
     el.addEventListener('pointermove', (e) => {
-      const d = this.drag;
-      if (!d || !d.dir) return;
-      const p = local(e);
-      if (!d.started) {
-        if (Math.hypot(p.x - d.start.x, p.y - d.start.y) < 8) return;
-        d.started = true;
-        this.busy = true;
-        this.begin(d.dir, d.cornerY);
-      }
+      if (!drag) return;
+      const dx = e.clientX - drag.startX;
+      const dy = e.clientY - drag.startY;
       const now = performance.now();
-      d.vx = (p.x - d.last.x) / Math.max(now - d.lastT, 1);
-      d.last = p;
-      d.lastT = now;
-      const baseX = d.dir === 'fwd' ? this.W : -this.W;
-      this.render(this.constrain({ x: baseX + (p.x - d.start.x) * 1.6, y: d.cornerY + (p.y - d.start.y) }));
+      const dt = Math.max(now - drag.lastT, 1);
+      drag.vx = (e.clientX - drag.lastX) / dt;
+      drag.lastX = e.clientX;
+      drag.lastT = now;
+
+      if (!drag.active) {
+        if (Math.hypot(dx, dy) < 8) return;
+        // Check if movement is primarily horizontal swipe
+        if (Math.abs(dx) > Math.abs(dy) && drag.can) {
+          drag.active = true;
+          this.busy = true;
+          const target = drag.dir === 'fwd' ? this.cur + 1 : this.cur - 1;
+          if (drag.dir === 'fwd') {
+            this.setupLeaf(this.cur, target);
+          } else {
+            this.setupLeaf(target, this.cur);
+          }
+        } else {
+          return;
+        }
+      }
+
+      // Drag progress
+      let p;
+      if (drag.dir === 'fwd') {
+        p = clamp(-dx / (this.W * 0.8), 0, 1);
+      } else {
+        p = clamp(1 - (dx / (this.W * 0.8)), 0, 1);
+      }
+      drag.progress = p;
+      this.renderProgress(p);
     });
-    const up = async () => {
-      const d = this.drag;
-      this.drag = null;
-      if (!d) return;
-      if (!d.started) { // a tap: right half → next, left half → previous
-        if (d.dir) this.flip(d.dir);
+
+    const finish = async () => {
+      if (!drag) return;
+      const d = drag;
+      drag = null;
+
+      if (!d.active) {
+        // Simple tap: tap right half -> flip forward, tap left half -> flip backward
+        if (d.can) {
+          await this.flip(d.dir);
+        }
         return;
       }
-      const { W } = this, P = this.P, C = this.f.C;
-      const progress = (C.x - P.x) / (2 * W);
-      const complete = d.dir === 'fwd' ? progress > 0.28 || d.vx < -0.5 : progress < 0.72 || d.vx > 0.5;
-      const toLeft = (d.dir === 'fwd') === complete;
-      const target = { x: toLeft ? -W : W, y: C.y };
-      const remaining = Math.abs(target.x - P.x) / (2 * W);
-      await this.tween({ ...P }, target, 260 + remaining * 520, easeOut);
-      this.end(complete);
+
+      // Swiped drag
+      const shouldComplete = d.dir === 'fwd'
+        ? (d.progress > 0.28 || d.vx < -0.4)
+        : (d.progress < 0.72 || d.vx > 0.4);
+
+      const targetP = d.dir === 'fwd' ? (shouldComplete ? 1 : 0) : (shouldComplete ? 0 : 1);
+      const remaining = Math.abs(targetP - d.progress);
+      const dur = Math.max(250, remaining * 650);
+
+      await this.animateTurn(d.progress, targetP, dur, easeOut);
+
+      const next = d.dir === 'fwd'
+        ? (shouldComplete ? this.cur + 1 : this.cur)
+        : (shouldComplete ? this.cur - 1 : this.cur);
+
+      this.show(next);
+      if (next !== this.cur) {
+        this.onChange(next);
+      }
       this.busy = false;
     };
-    el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
-  }
-}
 
-function clipPoly(pts, f) { // keeps the part where f(p) >= 0
-  const out = [];
-  for (let i = 0; i < pts.length; i++) {
-    const a = pts[i], b = pts[(i + 1) % pts.length], fa = f(a), fb = f(b);
-    if (fa >= 0) out.push(a);
-    if ((fa >= 0) !== (fb >= 0)) {
-      const t = fa / (fa - fb);
-      out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
-    }
+    el.addEventListener('pointerup', finish);
+    el.addEventListener('pointercancel', finish);
   }
-  return out;
 }
-const polyCss = (pts) => (pts.length < 3 ? 'polygon(0 0,0 0,0 0)'
-  : `polygon(${pts.map(([x, y]) => `${x.toFixed(2)}px ${y.toFixed(2)}px`).join(',')})`);
 
 /* =====================================================================
    Envelope sequence
@@ -520,21 +603,28 @@ const stage = $('stage');
 const envelope = $('envelope');
 const card = $('card');
 const seal = $('seal');
-const dots = $('dots');
-const turnHint = $('turnHint');
 const venueBox = $('venueBox');
 let state = 'closed';
 let book;
 
 function layout() {
   const sw = stage.clientWidth, sh = stage.clientHeight;
-  const envW = Math.min(sw * 0.92, sh * 0.7 * 0.6), envH = envW / 0.6;
-  const envX = (sw - envW) / 2, envY = sh - envH - Math.max(sh * 0.03, 10);
+  const envW = Math.min(sw - 20, sw * 0.94, (sh - 70) * 0.6);
+  const envH = envW / 0.6;
+  const envX = (sw - envW) / 2;
+  const envY = sh - envH - Math.max(sh * 0.02, 10);
   Object.assign(envelope.style, { left: `${envX}px`, top: `${envY}px`, width: `${envW}px`, height: `${envH}px` });
 
-  const BELOW = 190; // room under the card for the dots, hint and venue box
-  const cw = Math.min(sw * 0.92, sh * 0.68 * CARD_RATIO, (sh - BELOW - 64) * CARD_RATIO), ch = cw / CARD_RATIO;
-  const cx = (sw - cw) / 2, cy = Math.max(Math.min((sh - ch) / 2 - sh * 0.015, sh - ch - BELOW), 64);
+  // Increased card size for phones: fills up to 95% width while fitting comfortably vertically
+  const topSpace = 54;
+  const belowSpace = 86; // 12px gap + ~42px location box + ~32px bottom breathing room
+  const maxCh = sh - topSpace - belowSpace;
+  const maxCwByH = maxCh * CARD_RATIO;
+  const cw = Math.min(sw - 16, sw * 0.95, maxCwByH);
+  const ch = cw / CARD_RATIO;
+  const cx = (sw - cw) / 2;
+  const remH = sh - topSpace - (ch + 12 + 42);
+  const cy = topSpace + Math.max(0, Math.min(22, remH * 0.22));
   Object.assign(card.style, { left: `${cx}px`, top: `${cy}px`, width: `${cw}px`, height: `${ch}px` });
 
   // where the card sits while inside the envelope
@@ -548,9 +638,8 @@ function layout() {
   };
   for (const [k, v] of Object.entries(vars)) stage.style.setProperty(k, v);
 
-  dots.style.top = `${cy + ch + 16}px`;
-  turnHint.style.top = `${cy + ch + 28}px`;
-  Object.assign(venueBox.style, { left: `${cx}px`, top: `${cy + ch + 58}px`, width: `${cw}px` });
+  // Location box moved directly above, right below the card
+  Object.assign(venueBox.style, { left: `${cx}px`, top: `${cy + ch + 12}px`, width: `${cw}px` });
   if (book) book.measure();
 }
 
@@ -678,7 +767,6 @@ function setTheme(i) {
   stage.style.setProperty('--bg', t.bg);
   stage.style.setProperty('--accent', t.accent);
   stage.style.setProperty('--deep', t.deep);
-  [...dots.children].forEach((d, k) => d.setAttribute('aria-selected', String(k === i)));
   setVenue(CONFIG.events[i]);
 }
 
@@ -704,8 +792,6 @@ function toggleVenue(open = !venueBox.classList.contains('is-open')) {
 
 function onPageChange(i) {
   setTheme(i);
-  try { localStorage.setItem('turnedOnce', '1'); } catch (e) { /* storage unavailable */ }
-  turnHint.classList.add('is-hidden');
 }
 
 /* ---------- init ---------- */
@@ -718,15 +804,6 @@ function init() {
   seal.querySelectorAll('.seal-half').forEach((h) => { h.innerHTML = sealFace; });
 
   book = new Book($('book'), CONFIG.events.map(pageHTML), CONFIG.monogram, onPageChange);
-  CONFIG.events.forEach((ev, i) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.setAttribute('role', 'tab');
-    b.setAttribute('aria-label', ev.title);
-    b.addEventListener('click', () => book.goTo(i));
-    dots.appendChild(b);
-  });
-  try { if (localStorage.getItem('turnedOnce')) turnHint.classList.add('is-hidden'); } catch (e) { /* ignore */ }
 
   layout();
   addEventListener('resize', layout);
