@@ -136,7 +136,7 @@ function drawBlossoms() {
   if (!rain) return;
   rain.innerHTML = '';
 
-  for (let i = 0; i < 34; i++) {
+  for (let i = 0; i < 9; i++) {
     const p = document.createElement('div');
     p.className = 'petal';
     const d = 9 + R() * 9;
@@ -311,7 +311,7 @@ class Book {
       maxShadowOpacity: 0.5,
       showCover: false,
       usePortrait: true,
-      flippingTime: 700,
+      flippingTime: 500,
       useMouseEvents: true,
       swipeDistance: 25,
       showPageCorners: true,
@@ -406,11 +406,11 @@ function layout() {
   const belowSpace = 86; // 12px gap + ~42px location box + ~32px bottom breathing room
   const maxCh = sh - topSpace - belowSpace;
   const maxCwByH = maxCh * CARD_RATIO;
-  const cw = Math.min(sw - 16, sw * 0.95, maxCwByH);
-  const ch = cw / CARD_RATIO;
-  const cx = (sw - cw) / 2;
+  const cw = Math.floor(Math.min(sw - 16, sw * 0.95, maxCwByH));
+  const ch = Math.round(cw / CARD_RATIO);
+  const cx = Math.round((sw - cw) / 2);
   const remH = sh - topSpace - (ch + 12 + 42);
-  const cy = topSpace + Math.max(0, Math.min(22, remH * 0.22));
+  const cy = Math.round(topSpace + Math.max(0, Math.min(22, remH * 0.22)));
   Object.assign(card.style, { left: `${cx}px`, top: `${cy}px`, width: `${cw}px`, height: `${ch}px` });
 
   // where the card sits while inside the envelope
@@ -610,6 +610,19 @@ function init() {
   window.addEventListener('pointerdown', startOnFirstGesture, { once: true });
   $('closeBtn').addEventListener('click', () => { toggleVenue(false); closeEnvelope(); });
   $('venueHead').addEventListener('click', () => toggleVenue());
+
+  // Tap left side of card to go back, tap right side to go forward
+  card.addEventListener('click', (e) => {
+    if (state !== 'reading' || !book || book.busy) return;
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    if (x < rect.width * 0.38) {
+      book.flip('back');
+    } else if (x > rect.width * 0.62) {
+      book.flip('fwd');
+    }
+  });
+
   addEventListener('keydown', (e) => {
     if (state === 'closed' && (e.key === 'Enter' || e.key === ' ')) openEnvelope();
     if (state !== 'reading') return;

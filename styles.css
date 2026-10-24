@@ -52,9 +52,9 @@ body {
   object-position: center;
   z-index: 0;
   display: block;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: high-quality;
-  filter: contrast(1.04) saturate(1.06);
+  pointer-events: none;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .petal-rain { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
@@ -66,7 +66,6 @@ body {
   height: var(--s);
   animation: fall var(--d) linear var(--delay) infinite;
   opacity: var(--op, .85);
-  filter: drop-shadow(0 2px 5px rgba(180, 80, 110, .14));
 }
 .petal i {
   display: block;
@@ -301,14 +300,15 @@ body {
   overflow: hidden;
   box-sizing: border-box;
   border: none;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
-/* St.PageFlip container adjustments */
+/* St.PageFlip container adjustments - crisp rendering, no composite blur */
 .stf__parent {
   position: relative;
   display: block;
   box-sizing: border-box;
-  transform: translateZ(0);
 }
 .stf__wrapper {
   position: relative;
@@ -333,6 +333,12 @@ body {
   top: 0;
   bottom: 0;
   right: 0;
+  transform: none !important;
+  transform-style: flat !important;
+  -webkit-transform-style: flat !important;
+  backface-visibility: visible !important;
+  -webkit-backface-visibility: visible !important;
+  filter: none !important;
 }
 
 /* ---------- Invitation page ---------- */
@@ -402,10 +408,11 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: fill;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-  transform: translateZ(0);
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* ---------- Reader UI ---------- */
