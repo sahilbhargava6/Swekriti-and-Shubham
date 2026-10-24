@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f6f0e7">
-  <title>Wedding Invite</title>
+  <title>Swekriti &amp; Shubham — Wedding Invitation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&display=swap" rel="stylesheet">
@@ -12,10 +12,10 @@
 </head>
 <body>
   <main class="stage" id="stage">
-    <!-- Background: cherry blossoms + falling petals -->
+    <!-- Background: animated background.gif -->
     <div class="backdrop" aria-hidden="true">
-      <svg class="blossoms blossoms-top" id="blossomsTop" viewBox="0 0 400 300" preserveAspectRatio="xMidYMin slice"></svg>
-      <svg class="blossoms blossoms-bottom" id="blossomsBottom" viewBox="0 0 400 220" preserveAspectRatio="xMidYMax slice"></svg>
+      <img src="pages/background.gif" alt="" class="backdrop-gif">
+      <div class="petal-rain" id="petalRain"></div>
     </div>
 
     <div class="scene" id="scene">
@@ -46,8 +46,30 @@
       </div>
     </div>
 
-    <!-- Falling blossoms, in front of the envelope and card -->
-    <div class="petal-rain" id="petalRain" aria-hidden="true"></div>
+    <!-- Music button and volume slider -->
+    <div class="music-control" id="musicControl">
+      <button class="music-btn is-muted" id="musicBtn" type="button" aria-label="Play background music">
+        <svg class="music-icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 18V5l12-2v13"></path>
+          <circle cx="6" cy="18" r="3"></circle>
+          <circle cx="18" cy="16" r="3"></circle>
+        </svg>
+        <svg class="music-icon-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 18V5l12-2v13"></path>
+          <circle cx="6" cy="18" r="3"></circle>
+          <circle cx="18" cy="16" r="3"></circle>
+          <line x1="2" y1="2" x2="22" y2="22" stroke-width="2"></line>
+        </svg>
+      </button>
+      <div class="volume-slider-wrap" id="volumeWrap">
+        <svg class="vol-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.01" value="0.30" aria-label="Music volume">
+      </div>
+    </div>
+    <audio id="bgMusic" src="music.mp3" loop preload="auto"></audio>
 
     <div class="reader-ui">
       <button class="close-btn" id="closeBtn" type="button" aria-label="Put the card back in the envelope">

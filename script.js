@@ -16,10 +16,11 @@
 const CONFIG = {
   monogram: 'S',
   sealImage: 'seal.png', // wax seal on the envelope (falls back to a drawn seal if missing)
+  bgMusic: 'music.mp3', // background music (Saathiya flute theme)
   events: [
     {
       title: 'Wedding Invitation',
-      cardImage: 'pages/page-1.jpg',
+      cardImage: 'pages/wedding_card_pages.gif',
       theme: 'invite',
       venue: 'The Ritz', city: 'Moti Nagar',
       address: 'The Ritz, Moti Nagar, New Delhi',
@@ -27,7 +28,7 @@ const CONFIG = {
     },
     {
       title: 'Tel-Madha Bhaat',
-      cardImage: 'pages/page-2.jpg',
+      cardImage: 'pages/wedding_card_pages_1.gif',
       theme: 'haldi',
       venue: 'Hotel Palm Grand', city: 'Naraina',
       address: 'Hotel Palm Grand, Naraina, New Delhi',
@@ -35,18 +36,54 @@ const CONFIG = {
     },
     {
       title: 'Ring Ceremony & Mehandi Night',
-      cardImage: 'pages/page-3.jpg',
+      cardImage: 'pages/wedding_card_pages_2.gif',
       theme: 'ring',
       venue: 'The Ritz', city: 'Moti Nagar',
       address: 'Glass House, 2nd floor — The Ritz, Moti Nagar, New Delhi',
-      mapQuery: 'The Ritz, Moti Nagar, New Delhi',
+      mapQuery: 'Glass House, The Ritz, Moti Nagar, New Delhi',
     },
     {
       title: 'Wedding Celebration',
-      cardImage: 'pages/page-4.jpg',
+      cardImage: 'pages/wedding_card_pages_3.gif',
       theme: 'celebration',
       venue: 'The Ritz', city: 'Moti Nagar',
       address: 'Pearl Hall, 1st floor — The Ritz, Moti Nagar, New Delhi',
+      mapQuery: 'Pearl Hall, The Ritz, Moti Nagar, New Delhi',
+    },
+    {
+      title: 'Celebrations Itinerary',
+      cardImage: 'pages/wedding_card_pages_4.gif',
+      theme: 'wedding',
+      venue: 'The Ritz & Palm Grand', city: 'New Delhi',
+      address: 'Dec 01: Tel-Madha Bhaat (Hotel Palm Grand) & Ring Ceremony (The Ritz) | Dec 02: Wedding Celebration (The Ritz)',
+      mapQuery: 'The Ritz, Moti Nagar, New Delhi',
+    },
+    {
+      title: 'In Loving Memory',
+      cardImage: 'pages/wedding_card_pages_5.gif',
+      theme: 'memory',
+    },
+    {
+      title: 'With Best Compliments',
+      cardImage: 'pages/wedding_card_pages_6.gif',
+      theme: 'family',
+    },
+    {
+      title: 'Family & Blessings',
+      cardImage: 'pages/wedding_card_pages_7.gif',
+      theme: 'family',
+    },
+    {
+      title: 'Warm Regards',
+      cardImage: 'pages/wedding_card_pages_8.gif',
+      theme: 'family',
+    },
+    {
+      title: 'Awaiting Your Presence',
+      cardImage: 'pages/wedding_card_pages_9.gif',
+      theme: 'invite',
+      venue: 'The Ritz', city: 'Moti Nagar',
+      address: 'The Ritz, Moti Nagar, New Delhi',
       mapQuery: 'The Ritz, Moti Nagar, New Delhi',
     },
   ],
@@ -56,12 +93,14 @@ const THEMES = {
   invite:      { accent: '#a0283a', deep: '#7e1d2c', bg: '#f3ead9' },
   ring:        { accent: '#2c3a78', deep: '#1f2a5c', bg: '#e8e5ee' },
   celebration: { accent: '#6a4387', deep: '#553270', bg: '#e6efec' },
-  haldi:   { accent: '#e9a514', deep: '#c27a12', drape1: '#fbe7ab', drape2: '#f1c656', wash: '#f6cd45', bead1: '#f39a1e', bead2: '#f7c636', paste: '#f2b51c', bg: '#efe6cf' },
-  mehendi: { accent: '#6e8f2c', deep: '#4b6a1d', drape1: '#e4ecc6', drape2: '#b9cd7f', wash: '#b4cb73', bead1: '#f39a1e', bead2: '#7da43c', paste: '#5d7a26', bg: '#e9ead5' },
-  wedding: { accent: '#b4243f', deep: '#8a1a31', drape1: '#f9d8d8', drape2: '#e9a3ad', wash: '#efa1ae', bead1: '#d8314f', bead2: '#f2b53a', paste: '#c8304f', bg: '#f3e4df' },
+  haldi:       { accent: '#e9a514', deep: '#c27a12', drape1: '#fbe7ab', drape2: '#f1c656', wash: '#f6cd45', bead1: '#f39a1e', bead2: '#f7c636', paste: '#f2b51c', bg: '#efe6cf' },
+  mehendi:     { accent: '#6e8f2c', deep: '#4b6a1d', drape1: '#e4ecc6', drape2: '#b9cd7f', wash: '#b4cb73', bead1: '#f39a1e', bead2: '#7da43c', paste: '#5d7a26', bg: '#e9ead5' },
+  wedding:     { accent: '#b4243f', deep: '#8a1a31', drape1: '#f9d8d8', drape2: '#e9a3ad', wash: '#efa1ae', bead1: '#d8314f', bead2: '#f2b53a', paste: '#c8304f', bg: '#f3e4df' },
+  family:      { accent: '#9b6b3e', deep: '#724c28', bg: '#f8f3ed' },
+  memory:      { accent: '#8b6f53', deep: '#614b35', bg: '#f5eee6' },
 };
 
-const CARD_RATIO = 1240 / 1748; // width / height of the card (matches the page images)
+const CARD_RATIO = 396 / 559; // width / height of the card (matches the new page images)
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -75,117 +114,38 @@ function rng(seed) { // deterministic so the layout is identical on every load
 }
 
 /* =====================================================================
-   Cherry blossoms
+   Cherry blossoms & falling petals
    ===================================================================== */
-const PETAL_D = 'M0 0C-20-8-26-30-14-38C-8-42-3-40 0-35C3-40 8-42 14-38C26-30 20-8 0 0Z';
-
-function blossomDefs() {
-  const grad = (id, stops) => `<radialGradient id="${id}" cx=".5" cy="1" r="1.05">${stops
-    .map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join('')}</radialGradient>`;
-  let stamens = '';
-  for (let i = 0; i < 11; i++) {
-    const a = (i / 11) * Math.PI * 2 + 0.3, r = 11 + (i % 3) * 2;
-    const x = (Math.cos(a) * r).toFixed(1), y = (Math.sin(a) * r).toFixed(1);
-    stamens += `<line x1="0" y1="0" x2="${x}" y2="${y}"/><circle cx="${x}" cy="${y}" r="1.3"/>`;
-  }
-  return `<defs>
-    <filter id="wc" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="4"/>
-      <feDisplacementMap in="SourceGraphic" scale="3.5"/>
-    </filter>
-    ${grad('pA', [[0, '#c93d6b'], [0.35, '#e47c9e'], [0.75, '#f5b9cb'], [1, '#fde4eb']])}
-    ${grad('pB', [[0, '#de6990'], [0.4, '#f2a7be'], [1, '#fff0f4']])}
-    ${grad('pC', [[0, '#b52a59'], [0.4, '#d9608a'], [1, '#f5c2d1']])}
-    <path id="petal" d="${PETAL_D}"/>
-    <path id="vein" d="M0-4V-29M0-6L-6-25M0-6L6-25" fill="none" stroke="#b83b64" stroke-width=".8" opacity=".3"/>
-    <g id="stamens" stroke="#b8325a" stroke-width=".7" fill="#e8b64f" opacity=".85">${stamens}</g>
-  </defs>`;
-}
-
-// Gentle breeze: each flower sways a little; the gust sweeps left → right
-const windRand = rng(23);
-function wind(x, size, loose) {
-  const R = windRand;
-  const sway = loose ? 1.6 : clamp(30 / size, 0.35, 1.3); // small and loose pieces move more
-  const a = (4 + R() * 5) * sway;
-  const dx = (2 + R() * 3) * sway;
-  const dy = (R() * 2 - 0.6) * sway;
-  const dur = 4.2 + R() * 1.8;
-  const delay = (x / 400) * 1.4 + R() * 0.35;
-  return `class="wind" style="--a:${a.toFixed(1)}deg;--dx:${dx.toFixed(1)}px;--dy:${dy.toFixed(1)}px;--dur:${dur.toFixed(2)}s;--delay:${delay.toFixed(2)}s"`;
-}
-
-function blossom(x, y, r, rot, grad, opacity = 1) {
-  let petals = '';
-  for (let k = 0; k < 5; k++) {
-    petals += `<use href="#petal" fill="url(#${grad})" transform="rotate(${k * 72})"/><use href="#vein" transform="rotate(${k * 72})"/>`;
-  }
-  return `<g ${wind(x, r, false)}><g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(0)}) scale(${(r / 40).toFixed(3)})" opacity="${opacity}">
-    ${petals}<circle r="6" fill="#a8284f" opacity=".8"/><use href="#stamens"/></g></g>`;
-}
-
-function loosePetal(x, y, s, rot, grad) {
-  return `<g ${wind(x, s, true)}><use href="#petal" fill="url(#${grad})" opacity=".9" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot.toFixed(0)}) scale(${(s / 40).toFixed(3)})"/></g>`;
-}
-
 function drawBlossoms() {
   const R = rng(7);
-  const grads = ['pA', 'pB', 'pC'];
-  const g = () => grads[Math.floor(R() * 3)];
+  // Realistic falling cherry blossom petals (rendered behind the cards)
+  const petalImgs = [
+    'url("pages/petal_0.png")',
+    'url("pages/petal_1.png")',
+    'url("pages/petal_2.png")',
+    'url("pages/petal_3.png")',
+    'url("pages/petal_4.png")',
+    'url("pages/petal_5.png")',
+    'url("pages/petal_6.png")',
+    'url("pages/petal_7.png")',
+    'url("pages/petal_8.png")',
+  ];
 
-  // top band: dense row of small blossoms + a few large ones (as in the design)
-  let top = '';
-  for (let i = 0; i < 34; i++) {
-    const x = -10 + R() * 420, y = -14 + R() * 62 + (i % 4 === 0 ? 20 : 0);
-    top += blossom(x, y, 11 + R() * 15, R() * 72, g(), 0.75 + R() * 0.25);
-  }
-  top += blossom(118, 104, 26, 20, 'pA');
-  top += blossom(58, 126, 13, 40, 'pB', 0.9);
-  top += blossom(262, 82, 15, 10, 'pB');
-  top += blossom(338, 130, 58, 12, 'pA');
-  top += blossom(392, 74, 30, 50, 'pC', 0.95);
-  for (let i = 0; i < 14; i++) top += loosePetal(R() * 400, 70 + R() * 120, 8 + R() * 8, R() * 360, g());
-  // (no watercolor filter here: it would be recomputed every frame while the flowers sway)
-  $('blossomsTop').innerHTML = blossomDefs() + top;
-
-  // bottom: scattered petals and a few blossoms
-  let bottom = '';
-  for (let i = 0; i < 26; i++) bottom += loosePetal(R() * 400, 40 + R() * 180, 9 + R() * 10, R() * 360, g());
-  bottom += blossom(34, 196, 24, 15, 'pA');
-  bottom += blossom(96, 214, 15, 40, 'pB');
-  bottom += blossom(372, 168, 30, 30, 'pB');
-  bottom += blossom(318, 212, 18, 0, 'pC', 0.9);
-  bottom += blossom(214, 222, 13, 50, 'pA', 0.85);
-  $('blossomsBottom').innerHTML = blossomDefs().replace(/id="(wc|pA|pB|pC|petal|vein|stamens)"/g, 'id="$1b"')
-    + bottom.replace(/#(pA|pB|pC|petal|vein|stamens)\b/g, '#$1b');
-
-  // falling blossoms and petals
-  const dataUrl = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-  const grad = (c1, c2) => `<defs><radialGradient id="g" cx=".5" cy="1" r="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></radialGradient></defs>`;
-  const petalSvg = (c1, c2) => dataUrl(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-28 -44 56 48">${grad(c1, c2)}<path d="${PETAL_D}" fill="url(#g)"/></svg>`);
-  const bloomSvg = (c1, c2) => {
-    let petals = '';
-    for (let k = 0; k < 5; k++) petals += `<path d="${PETAL_D}" fill="url(#g)" transform="rotate(${k * 72})"/>`;
-    let stamens = '';
-    for (let k = 0; k < 9; k++) {
-      const a = (k / 9) * Math.PI * 2, x = (Math.cos(a) * 11).toFixed(1), y = (Math.sin(a) * 11).toFixed(1);
-      stamens += `<line x1="0" y1="0" x2="${x}" y2="${y}" stroke="#b8325a" stroke-width=".8"/><circle cx="${x}" cy="${y}" r="1.4" fill="#e8b64f"/>`;
-    }
-    return dataUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-44 -44 88 88">${grad(c1, c2)}${petals}<circle r="6" fill="#a8284f" opacity=".8"/>${stamens}</svg>`);
-  };
-  const colors = [['#e47c9e', '#fde4eb'], ['#de6990', '#fff0f4'], ['#c93d6b', '#f5c2d1']];
-  const petalImgs = colors.map((c) => petalSvg(...c));
-  const bloomImgs = colors.map((c) => bloomSvg(...c));
   const rain = $('petalRain');
-  for (let i = 0; i < 26; i++) {
+  if (!rain) return;
+  rain.innerHTML = '';
+
+  for (let i = 0; i < 34; i++) {
     const p = document.createElement('div');
-    const isBloom = i % 2 === 0;
-    p.className = isBloom ? 'petal bloom' : 'petal';
-    const d = 10 + R() * 9;
-    const size = isBloom ? 16 + R() * 22 : 9 + R() * 9;
-    const img = (isBloom ? bloomImgs : petalImgs)[i % 3];
-    p.style.cssText = `--x:${(R() * 100).toFixed(1)}%;--s:${size.toFixed(0)}px;--d:${d.toFixed(1)}s;--delay:${(-R() * d).toFixed(1)}s;--sway:${(18 + R() * 34).toFixed(0)}px;--r:${(R() * 360).toFixed(0)}deg;--img:${img}`;
+    p.className = 'petal';
+    const d = 9 + R() * 9;
+    const size = 16 + R() * 20;
+    const img = petalImgs[Math.floor(R() * petalImgs.length)];
+    const op = (0.75 + R() * 0.25).toFixed(2);
+    const xPct = R() * 100;
+    const delay = -R() * d;
+
+    p.style.cssText = `--x:${xPct.toFixed(1)}%;--s:${size.toFixed(0)}px;--d:${d.toFixed(1)}s;--delay:${delay.toFixed(1)}s;--sway:${(18 + R() * 32).toFixed(0)}px;--r:${(R() * 360).toFixed(0)}deg;--op:${op};--img:${img}`;
     p.appendChild(document.createElement('i'));
     rain.appendChild(p);
   }
@@ -460,7 +420,15 @@ class Book {
   }
 
   async goTo(i) {
-    while (this.cur !== i) await this.flip(i > this.cur ? 'fwd' : 'back', 700);
+    if (this.busy || this.cur === i || i < 0 || i >= this.count) return;
+    if (Math.abs(this.cur - i) === 1) {
+      await this.flip(i > this.cur ? 'fwd' : 'back', 700);
+    } else {
+      this.busy = true;
+      this.show(i);
+      this.onChange(i);
+      this.busy = false;
+    }
   }
 
   // little corner lift to show the page can be turned
@@ -586,8 +554,80 @@ function layout() {
   if (book) book.measure();
 }
 
+/* ---------- background music & volume ---------- */
+const musicBtn = $('musicBtn');
+const volumeSlider = $('volumeSlider');
+const bgMusic = $('bgMusic');
+let isUserMuted = false;
+let currentVolume = 0.30; // Reduced default volume (30%)
+
+if (bgMusic) {
+  bgMusic.volume = currentVolume;
+}
+
+function playMusic() {
+  if (!bgMusic || isUserMuted) return;
+  bgMusic.volume = currentVolume;
+  bgMusic.play().then(() => {
+    if (volumeSlider) {
+    volumeSlider.value = currentVolume;
+    volumeSlider.addEventListener('input', onVolumeInput);
+  }
+  if (musicBtn) {
+      musicBtn.classList.add('is-playing');
+      musicBtn.classList.remove('is-muted');
+      musicBtn.setAttribute('aria-label', 'Pause background music');
+    }
+  }).catch(() => {
+    // Browser autoplay policy prevented playback before interaction
+  });
+}
+
+function pauseMusic() {
+  if (!bgMusic) return;
+  bgMusic.pause();
+  if (musicBtn) {
+    musicBtn.classList.remove('is-playing');
+    musicBtn.classList.add('is-muted');
+    musicBtn.setAttribute('aria-label', 'Play background music');
+  }
+}
+
+function toggleMusic() {
+  if (!bgMusic) return;
+  if (bgMusic.paused) {
+    isUserMuted = false;
+    if (currentVolume <= 0.05) currentVolume = 0.30;
+    if (volumeSlider) volumeSlider.value = currentVolume;
+    playMusic();
+  } else {
+    isUserMuted = true;
+    pauseMusic();
+  }
+}
+
+function onVolumeInput(e) {
+  const val = parseFloat(e.target.value);
+  currentVolume = val;
+  if (!bgMusic) return;
+  bgMusic.volume = val;
+  if (val === 0) {
+    isUserMuted = true;
+    pauseMusic();
+  } else {
+    isUserMuted = false;
+    if (bgMusic.paused) {
+      playMusic();
+    } else if (musicBtn) {
+      musicBtn.classList.add('is-playing');
+      musicBtn.classList.remove('is-muted');
+    }
+  }
+}
+
 async function openEnvelope() {
   if (state !== 'closed') return;
+  playMusic();
   state = 'opening';
   const c = stage.classList;
   c.add('is-opening', 'is-seal-broken');
@@ -644,6 +684,12 @@ function setTheme(i) {
 
 // Venue box: first tap reveals the address, tapping the address opens Google Maps
 function setVenue(ev) {
+  if (!ev.venue) {
+    venueBox.classList.add('is-hidden');
+    toggleVenue(false);
+    return;
+  }
+  venueBox.classList.remove('is-hidden');
   $('venueName').textContent = [ev.venue, ev.city].filter(Boolean).join(', ');
   $('venueAddress').textContent = ev.address || [ev.venue, ev.city].filter(Boolean).join(', ');
   $('venueMap').href = ev.mapUrl
@@ -686,6 +732,18 @@ function init() {
   addEventListener('resize', layout);
   stage.querySelector('.env-back').addEventListener('click', openEnvelope);
   seal.addEventListener('click', openEnvelope);
+  if (musicBtn) {
+    musicBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMusic();
+    });
+  }
+  const startOnFirstGesture = () => {
+    if (!isUserMuted && bgMusic && bgMusic.paused) {
+      playMusic();
+    }
+  };
+  window.addEventListener('pointerdown', startOnFirstGesture, { once: true });
   $('closeBtn').addEventListener('click', () => { toggleVenue(false); closeEnvelope(); });
   $('venueHead').addEventListener('click', () => toggleVenue());
   addEventListener('keydown', (e) => {
