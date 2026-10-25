@@ -55,9 +55,23 @@ const CONFIG = {
       title: 'Celebrations Itinerary',
       cardImage: 'pages/wedding_card_pages_4.gif',
       theme: 'wedding',
-      venue: 'The Ritz & Palm Grand', city: 'New Delhi',
-      address: 'Dec 01: Tel-Madha Bhaat (Hotel Palm Grand) & Ring Ceremony (The Ritz) | Dec 02: Wedding Celebration (The Ritz)',
-      mapQuery: 'The Ritz, Moti Nagar, New Delhi',
+      venue: 'Multiple Venues', city: 'Naraina & Moti Nagar',
+      locations: [
+        {
+          event: 'Tel-Madha Bhaat (Dec 01 · 12:30 PM)',
+          name: 'Hotel Palm Grand',
+          address: 'Hotel Palm Grand, Naraina, New Delhi',
+          mapQuery: 'Hotel Palm Grand, Naraina, New Delhi',
+          mapUrl: 'https://www.google.com/maps/search/?api=1&query=Hotel+Palm+Grand%2C+Naraina%2C+New+Delhi',
+        },
+        {
+          event: 'Ring Ceremony (Dec 01) & Wedding (Dec 02)',
+          name: 'The Ritz',
+          address: 'The Ritz, 69/1A, Najafgarh Road, Moti Nagar, New Delhi',
+          mapQuery: 'The Ritz, Moti Nagar, New Delhi',
+          mapUrl: 'https://www.google.com/maps/search/?api=1&query=The+Ritz%2C+Moti+Nagar%2C+New+Delhi',
+        },
+      ],
     },
     {
       title: 'In Loving Memory',
@@ -307,11 +321,10 @@ class Book {
       maxWidth: 900,
       minHeight: 280,
       maxHeight: 1300,
-      drawShadow: true,
-      maxShadowOpacity: 0.5,
+      drawShadow: false,
       showCover: false,
       usePortrait: true,
-      flippingTime: 500,
+      flippingTime: 380,
       useMouseEvents: true,
       swipeDistance: 25,
       showPageCorners: true,
@@ -329,6 +342,7 @@ class Book {
 
     this.stFlip.on('changeState', (e) => {
       this.busy = e.data !== 'read';
+      stage.classList.toggle('is-flipping', this.busy);
     });
   }
 
@@ -390,11 +404,23 @@ const envelope = $('envelope');
 const card = $('card');
 const seal = $('seal');
 const venueBox = $('venueBox');
+const readerDetails = $('readerDetails');
 let state = 'closed';
 let book;
 
+function updateStageHeight() {
+  if (state !== 'reading') return;
+  const details = $('readerDetails');
+  if (!details) return;
+  const detailsH = details.offsetHeight || 140;
+  const cy = parseInt(card.style.top, 10) || 54;
+  const ch = parseInt(card.style.height, 10) || 450;
+  const totalH = cy + ch + 14 + detailsH + 30;
+  stage.style.minHeight = `${Math.max(window.innerHeight, totalH)}px`;
+}
+
 function layout() {
-  const sw = stage.clientWidth, sh = stage.clientHeight;
+  const sw = stage.clientWidth, sh = window.innerHeight;
   const envW = Math.min(sw - 20, sw * 0.94, (sh - 70) * 0.6);
   const envH = envW / 0.6;
   const envX = (sw - envW) / 2;
@@ -403,9 +429,8 @@ function layout() {
 
   // Top space accommodates music buttons and top safe area
   const topSpace = Math.max(54, Math.min(62, Math.round(sh * 0.08)));
-  // Reserve space for location drawer (header + address + map link + RSVP form + bottom safe area)
-  const belowSpace = Math.max(136, Math.min(156, Math.round(sh * 0.22)));
-  const maxCh = sh - topSpace - belowSpace;
+  // Clean card sizing: ensure card is sharp and readable
+  const maxCh = Math.max(400, sh - topSpace - 140);
   const maxCwByH = maxCh * CARD_RATIO;
   const cw = Math.floor(Math.min(sw - 20, sw * 0.92, maxCwByH));
   const ch = Math.round(cw / CARD_RATIO);
@@ -424,9 +449,13 @@ function layout() {
   };
   for (const [k, v] of Object.entries(vars)) stage.style.setProperty(k, v);
 
-  // Position venueBox directly below the card with a clean gap, clamped so it never overflows bottom
-  const venueTop = Math.min(cy + ch + 8, sh - 145);
-  Object.assign(venueBox.style, { left: `${cx}px`, top: `${venueTop}px`, width: `${cw}px` });
+  // Position readerDetails directly below the card with a clean gap
+  if (readerDetails) {
+    const detailsTop = cy + ch + 14;
+    Object.assign(readerDetails.style, { left: `${cx}px`, top: `${detailsTop}px`, width: `${cw}px` });
+  }
+
+  updateStageHeight();
   if (book) book.measure();
 }
 
@@ -517,7 +546,9 @@ async function openEnvelope() {
   c.add('is-card-front', 'is-env-gone', 'is-card-out');
   await wait(1200);
   c.add('is-reading');
+  document.body.classList.add('is-reading-mode');
   state = 'reading';
+  updateStageHeight();
   let seen = false;
   try { seen = !!localStorage.getItem('turnedOnce'); } catch (e) { /* storage unavailable */ }
   if (!seen) setTimeout(() => state === 'reading' && book.tease(), 600);
@@ -526,6 +557,9 @@ async function openEnvelope() {
 async function closeEnvelope() {
   if (state !== 'reading') return;
   state = 'closing';
+  document.body.classList.remove('is-reading-mode');
+  stage.style.minHeight = '';
+  window.scrollTo({ top: 0, behavior: 'instant' });
   const c = stage.classList;
   c.remove('is-reading');
   c.remove('is-env-gone', 'is-card-out');
@@ -557,30 +591,73 @@ function setTheme(i) {
   setVenue(CONFIG.events[i]);
 }
 
-// Venue box: first tap reveals the address, tapping the address opens Google Maps
+// Venue box: renders single or multiple locations with separate Google Maps links
 function setVenue(ev) {
-  if (!ev.venue) {
+  const inner = $('venueBodyInner');
+  const rsvpBtn = $('rsvpBtn');
+  if (rsvpBtn) {
+    rsvpBtn.href = ev.formUrl || CONFIG.formUrl || 'https://forms.gle/vEq6WfqpjbCnMzHA9';
+  }
+
+  if (!ev.venue && (!ev.locations || ev.locations.length === 0)) {
     venueBox.classList.add('is-hidden');
     toggleVenue(false);
+    updateStageHeight();
     return;
   }
+
   venueBox.classList.remove('is-hidden');
   $('venueName').textContent = [ev.venue, ev.city].filter(Boolean).join(', ');
-  $('venueAddress').textContent = ev.address || [ev.venue, ev.city].filter(Boolean).join(', ');
-  $('venueMap').href = ev.mapUrl
-    || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.mapQuery || `${ev.venue}, ${ev.address || ev.city}`)}`;
-  const formEl = $('venueForm');
-  if (formEl) formEl.href = ev.formUrl || CONFIG.formUrl || 'https://forms.gle/vEq6WfqpjbCnMzHA9';
+
+  if (ev.locations && ev.locations.length > 0) {
+    // Multiple locations (e.g. Page 4 - Celebrations Itinerary)
+    inner.innerHTML = `
+      <div class="venue-multi-locations">
+        ${ev.locations.map((loc) => {
+          const mapHref = loc.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.mapQuery || loc.address || loc.name)}`;
+          return `
+            <div class="venue-location-item">
+              <div class="venue-loc-header">
+                ${loc.event ? `<span class="venue-loc-badge">${esc(loc.event)}</span>` : ''}
+                <span class="venue-loc-name">${esc(loc.name)}</span>
+              </div>
+              <div class="venue-address">${esc(loc.address)}</div>
+              <a class="venue-map-link" href="${esc(mapHref)}" target="_blank" rel="noopener">
+                <svg class="map-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="18"></line><line x1="15" y1="6" x2="15" y2="21"></line></svg>
+                Open in Google Maps ↗
+              </a>
+            </div>
+          `;
+        }).join('<div class="venue-loc-sep"></div>')}
+      </div>
+    `;
+  } else {
+    // Single location
+    const mapHref = ev.mapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ev.mapQuery || `${ev.venue}, ${ev.address || ev.city}`)}`;
+    inner.innerHTML = `
+      <div class="venue-location-item">
+        <div class="venue-address">${esc(ev.address || [ev.venue, ev.city].filter(Boolean).join(', '))}</div>
+        <a class="venue-map-link" href="${esc(mapHref)}" target="_blank" rel="noopener">
+          <svg class="map-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="18"></line><line x1="15" y1="6" x2="15" y2="21"></line></svg>
+          Open in Google Maps ↗
+        </a>
+      </div>
+    `;
+  }
+
+  updateStageHeight();
 }
 
 function toggleVenue(open = !venueBox.classList.contains('is-open')) {
   venueBox.classList.toggle('is-open', open);
   $('venueHead').setAttribute('aria-expanded', String(open));
   $('venueCta').textContent = open ? 'Hide' : 'View address';
+  setTimeout(updateStageHeight, 460);
 }
 
 function onPageChange(i) {
   setTheme(i);
+  updateStageHeight();
 }
 
 /* ---------- init ---------- */
@@ -624,59 +701,48 @@ function init() {
     }
   });
 
-  // Turn pages when scrolling up or down (wheel / trackpad)
-  let scrollCooldown = false;
-  window.addEventListener('wheel', (e) => {
-    if (state !== 'reading' || !book || book.busy || scrollCooldown) return;
-    if (e.target.closest('#venueBox')) return; // Let venue drawer scroll internally if needed
-    if (Math.abs(e.deltaY) < 22 || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
-
-    scrollCooldown = true;
-    if (e.deltaY > 0) {
-      book.flip('fwd');
-    } else {
-      book.flip('back');
-    }
-    setTimeout(() => { scrollCooldown = false; }, 600);
-  }, { passive: true });
-
-  // Turn pages when scrolling/swiping up or down on touchscreens
-  let touchStartY = 0;
+  // Swipe horizontally to flip pages (swipe left -> fwd, swipe right -> back)
+  // Vertical swiping and wheel will scroll the page smoothly without interception
   let touchStartX = 0;
+  let touchStartY = 0;
   let touchStartTime = 0;
-  let isTouchOnVenue = false;
+  let isSwipeCooldown = false;
 
   window.addEventListener('touchstart', (e) => {
     if (state !== 'reading' || !book || book.busy) return;
     if (e.touches.length > 0) {
-      touchStartY = e.touches[0].clientY;
       touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
-      isTouchOnVenue = !!e.target.closest('#venueBox');
     }
   }, { passive: true });
 
   window.addEventListener('touchend', (e) => {
-    if (state !== 'reading' || !book || book.busy || scrollCooldown || isTouchOnVenue) return;
+    if (state !== 'reading' || !book || book.busy || isSwipeCooldown) return;
     if (e.changedTouches.length > 0) {
-      const dy = e.changedTouches[0].clientY - touchStartY;
       const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
       const dt = Date.now() - touchStartTime;
 
-      // Vertical swipe: significant Y movement, primarily vertical, within reasonable duration
-      if (Math.abs(dy) > 38 && Math.abs(dy) > Math.abs(dx) * 1.15 && dt < 800) {
-        scrollCooldown = true;
-        if (dy < 0) {
-          // Swiped up (scrolling down) -> next page
+      // Primarily horizontal swipe of sufficient distance and reasonable speed
+      if (Math.abs(dx) > 38 && Math.abs(dx) > Math.abs(dy) * 1.25 && dt < 700) {
+        isSwipeCooldown = true;
+        if (dx < 0) {
           book.flip('fwd');
         } else {
-          // Swiped down (scrolling up) -> previous page
           book.flip('back');
         }
-        setTimeout(() => { scrollCooldown = false; }, 600);
+        setTimeout(() => { isSwipeCooldown = false; }, 420);
       }
     }
   }, { passive: true });
+
+  const detailsEl = $('readerDetails');
+  if (detailsEl && window.ResizeObserver) {
+    new ResizeObserver(() => {
+      updateStageHeight();
+    }).observe(detailsEl);
+  }
 
   addEventListener('keydown', (e) => {
     if (state === 'closed' && (e.key === 'Enter' || e.key === ' ')) openEnvelope();

@@ -8,9 +8,11 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
-
+html {
+  min-height: 100%;
+}
 body {
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -20,25 +22,40 @@ body {
   color: var(--ink);
   -webkit-tap-highlight-color: transparent;
 }
+body.is-reading-mode {
+  align-items: flex-start;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
 
 /* ---------- Stage (phone-sized canvas) ---------- */
 .stage {
   --bg: #f6f0e7;
   position: relative;
   width: min(100vw, 430px);
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   height: 100dvh;
   overflow: hidden;
   isolation: isolate;
-  background-color: var(--bg);
+  background: transparent;
   transition: background-color 1.2s ease;
   user-select: none;
   -webkit-user-select: none;
 }
+.stage.is-reading {
+  height: auto;
+  overflow: visible;
+}
 /* ---------- Backdrop ---------- */
 .backdrop {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  width: min(100vw, 430px);
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
@@ -57,7 +74,17 @@ body {
   will-change: transform;
 }
 
-.petal-rain { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+.petal-rain {
+  position: fixed;
+  inset: 0;
+  width: min(100vw, 430px);
+  height: 100vh;
+  height: 100dvh;
+  margin: 0 auto;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
 .petal {
   position: absolute;
   top: -8%;
@@ -66,6 +93,9 @@ body {
   height: var(--s);
   animation: fall var(--d) linear var(--delay) infinite;
   opacity: var(--op, .85);
+}
+.is-flipping .petal, .is-flipping .petal i {
+  animation-play-state: paused !important;
 }
 .petal i {
   display: block;
@@ -327,6 +357,8 @@ body {
   display: none;
   position: absolute;
   transform-style: preserve-3d;
+  will-change: transform, clip-path;
+  box-shadow: -10px 0 28px rgba(30, 10, 5, .28);
 }
 .stf__item.--simple {
   left: 0;
@@ -339,6 +371,8 @@ body {
   backface-visibility: visible !important;
   -webkit-backface-visibility: visible !important;
   filter: none !important;
+  will-change: auto !important;
+  box-shadow: none !important;
 }
 
 /* ---------- Invitation page ---------- */
@@ -415,16 +449,11 @@ body {
   backface-visibility: hidden;
 }
 
-/* ---------- Reader UI ---------- */
-.reader-ui { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity .6s ease; }
-.is-reading .reader-ui { opacity: 1; }
-.is-reading .reader-ui > * { pointer-events: auto; }
-
 .music-control {
-  position: absolute;
+  position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 14px);
-  left: 14px;
-  z-index: 10;
+  left: max(14px, calc(50vw - 201px));
+  z-index: 40;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -537,9 +566,9 @@ body {
 
 .close-btn {
   pointer-events: auto;
-  position: absolute;
+  position: fixed;
   top: calc(env(safe-area-inset-top, 0px) + 14px);
-  right: 14px;
+  right: max(14px, calc(50vw - 201px));
   display: grid;
   place-items: center;
   width: 44px;
@@ -552,23 +581,38 @@ body {
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 6px 18px -6px rgba(140, 70, 95, .35);
   cursor: pointer;
-  z-index: 25;
+  z-index: 40;
+  transition: transform .25s ease, background-color .3s;
+}
+.close-btn:hover {
+  transform: scale(1.08);
 }
 .close-btn svg { width: 20px; height: 20px; }
+
+/* ---------- Reader Details (Venue Box + RSVP Button) ---------- */
+.reader-details {
+  pointer-events: auto;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 30;
+  padding-bottom: 24px;
+}
 
 /* ---------- Venue info card box ---------- */
 .venue-box {
   pointer-events: auto;
-  position: absolute;
+  position: relative;
+  width: 100%;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, .75);
-  border-radius: 12px;
-  background: rgba(255, 251, 247, .92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 8px 24px -6px rgba(80, 35, 25, .22), 0 2px 6px rgba(80, 35, 25, .08);
-  transition: opacity .4s ease, transform .4s ease, visibility .4s;
-  z-index: 30;
+  border: 1px solid rgba(255, 255, 255, .82);
+  border-radius: 14px;
+  background: rgba(255, 251, 247, .94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px -6px rgba(90, 40, 55, .18), 0 2px 6px rgba(0, 0, 0, .05);
+  transition: opacity .35s ease, transform .35s ease, visibility .35s;
 }
 .venue-box.is-hidden {
   opacity: 0;
@@ -581,7 +625,7 @@ body {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border: 0;
   background: none;
   font: inherit;
@@ -589,7 +633,7 @@ body {
   color: #5a4a3c;
   cursor: pointer;
 }
-.venue-pin { flex: none; width: 17px; height: 17px; color: var(--accent, #b45a78); transition: color 1.2s; }
+.venue-pin { flex: none; width: 18px; height: 18px; color: var(--accent, #b45a78); transition: color 1.2s; }
 .venue-name {
   flex: 1;
   min-width: 0;
@@ -614,67 +658,140 @@ body {
 .venue-box.is-open .venue-body { grid-template-rows: 1fr; }
 .venue-body-inner {
   min-height: 0;
-  max-height: min(180px, 32vh);
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 2px 12px 10px;
+  padding: 2px 14px 14px;
 }
 
-.venue-address-block {
+/* Single and multiple locations */
+.venue-multi-locations {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 2px 0 6px;
+  gap: 12px;
 }
-.venue-address {
-  font-size: 13px;
-  line-height: 1.35;
-  color: #5a4a3c;
+.venue-location-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
-.venue-map-link {
+.venue-loc-sep {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(140, 70, 95, .25), transparent);
+  margin: 3px 0;
+}
+.venue-loc-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.venue-loc-badge {
   display: inline-block;
   align-self: flex-start;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent, #b45a78) 12%, rgba(255, 255, 255, .7));
+  border: 1px solid color-mix(in srgb, var(--accent, #b45a78) 30%, transparent);
   font-family: var(--caps);
-  font-size: 10.5px;
-  letter-spacing: .12em;
-  color: var(--deep, #8a4a60);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-  transition: opacity .2s;
-}
-.venue-map-link:hover { opacity: .75; }
-
-.venue-form-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 6px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--accent, #b45a78) 35%, transparent);
-  background: color-mix(in srgb, var(--accent, #b45a78) 10%, rgba(255, 255, 255, .7));
-  font-family: var(--caps);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .11em;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
   color: var(--accent, #b45a78);
+}
+.venue-loc-name {
+  font-family: var(--caps);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: #443224;
+}
+.venue-address {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #5c4b3d;
+}
+.venue-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 3px;
+  padding: 5px 11px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent, #b45a78) 10%, rgba(255, 255, 255, .85));
+  border: 1px solid color-mix(in srgb, var(--accent, #b45a78) 28%, transparent);
+  font-family: var(--caps);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--deep, #7e1d2c);
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(140, 70, 95, .1);
-  transition: all .25s ease;
+  box-shadow: 0 2px 5px rgba(120, 50, 70, .08);
+  transition: all .2s ease;
 }
-.venue-form-link:hover, .venue-form-link:active {
-  background: color-mix(in srgb, var(--accent, #b45a78) 18%, rgba(255, 255, 255, .85));
+.venue-map-link:hover {
+  background: color-mix(in srgb, var(--accent, #b45a78) 18%, rgba(255, 255, 255, .95));
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(140, 70, 95, .18);
+  box-shadow: 0 4px 8px rgba(120, 50, 70, .15);
 }
-.venue-form-link .form-icon {
+.venue-map-link .map-icon {
   flex: none;
-  width: 14px;
-  height: 14px;
-  stroke-width: 2;
+}
+
+/* ---------- Dedicated RSVP Attendance Form Button (Outside Location Box) ---------- */
+.rsvp-card-btn {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px solid color-mix(in srgb, var(--accent, #b45a78) 40%, rgba(255, 255, 255, .85));
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--accent, #b45a78) 12%, rgba(255, 255, 255, .96)) 0%,
+    color-mix(in srgb, var(--accent, #b45a78) 18%, rgba(255, 251, 247, .94)) 100%
+  );
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 22px -6px rgba(120, 50, 70, .24), 0 2px 6px rgba(0, 0, 0, .06);
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .3s ease;
+}
+.rsvp-card-btn:hover, .rsvp-card-btn:active {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -6px rgba(120, 50, 70, .32), 0 4px 10px rgba(0, 0, 0, .08);
+  border-color: var(--accent, #b45a78);
+}
+.rsvp-card-btn .form-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 8px;
+  box-sizing: content-box;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent, #b45a78) 18%, rgba(255, 255, 255, .9));
+  color: var(--accent, #b45a78);
+  transition: background-color .3s, color .3s;
+}
+.rsvp-btn-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rsvp-btn-title {
+  font-family: var(--caps);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--accent, #b45a78);
+}
+.rsvp-btn-sub {
+  font-size: 11.5px;
+  line-height: 1.25;
+  color: #6a574a;
 }
 
 @media (prefers-reduced-motion: reduce) {
