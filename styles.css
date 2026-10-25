@@ -563,11 +563,12 @@ body {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, .75);
   border-radius: 12px;
-  background: rgba(255, 251, 247, .88);
+  background: rgba(255, 251, 247, .92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   box-shadow: 0 8px 24px -6px rgba(80, 35, 25, .22), 0 2px 6px rgba(80, 35, 25, .08);
   transition: opacity .4s ease, transform .4s ease, visibility .4s;
+  z-index: 30;
 }
 .venue-box.is-hidden {
   opacity: 0;
@@ -580,7 +581,7 @@ body {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border: 0;
   background: none;
   font: inherit;
@@ -588,13 +589,13 @@ body {
   color: #5a4a3c;
   cursor: pointer;
 }
-.venue-pin { flex: none; width: 18px; height: 18px; color: var(--accent, #b45a78); transition: color 1.2s; }
+.venue-pin { flex: none; width: 17px; height: 17px; color: var(--accent, #b45a78); transition: color 1.2s; }
 .venue-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   font-family: var(--caps);
-  font-size: 12.5px;
+  font-size: 12px;
   letter-spacing: .12em;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -603,7 +604,7 @@ body {
 .venue-cta {
   flex: none;
   font-style: italic;
-  font-size: 14.5px;
+  font-size: 13.5px;
   color: var(--deep, #8a4a60);
   transition: color 1.2s;
 }
@@ -613,26 +614,28 @@ body {
 .venue-box.is-open .venue-body { grid-template-rows: 1fr; }
 .venue-body-inner {
   min-height: 0;
-  overflow: hidden;
-  padding: 2px 14px 12px;
+  max-height: min(180px, 32vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 12px 10px;
 }
 
 .venue-address-block {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 2px 0 8px;
+  gap: 3px;
+  padding: 2px 0 6px;
 }
 .venue-address {
-  font-size: 14.5px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.35;
   color: #5a4a3c;
 }
 .venue-map-link {
   display: inline-block;
   align-self: flex-start;
   font-family: var(--caps);
-  font-size: 11px;
+  font-size: 10.5px;
   letter-spacing: .12em;
   color: var(--deep, #8a4a60);
   text-decoration: underline;
@@ -643,21 +646,30 @@ body {
 .venue-map-link:hover { opacity: .75; }
 
 .venue-form-link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 7px;
-  padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--accent, #b45a78) 18%, transparent);
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent, #b45a78) 35%, transparent);
+  background: color-mix(in srgb, var(--accent, #b45a78) 10%, rgba(255, 255, 255, .7));
   font-family: var(--caps);
-  font-size: 11.5px;
+  font-size: 11px;
+  font-weight: 500;
   letter-spacing: .11em;
   color: var(--accent, #b45a78);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
   cursor: pointer;
-  transition: color 1.2s, opacity .2s;
+  box-shadow: 0 2px 6px rgba(140, 70, 95, .1);
+  transition: all .25s ease;
 }
-.venue-form-link:hover { opacity: .75; }
+.venue-form-link:hover, .venue-form-link:active {
+  background: color-mix(in srgb, var(--accent, #b45a78) 18%, rgba(255, 255, 255, .85));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(140, 70, 95, .18);
+}
 .venue-form-link .form-icon {
   flex: none;
   width: 14px;

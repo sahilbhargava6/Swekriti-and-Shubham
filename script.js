@@ -299,7 +299,7 @@ class Book {
     const w = this.el.clientWidth || 370;
     const h = this.el.clientHeight || 522;
 
-    this.flip = new St.PageFlip(this.el, {
+    this.stFlip = new St.PageFlip(this.el, {
       width: Math.round(w),
       height: Math.round(h),
       size: 'fixed',
@@ -318,28 +318,28 @@ class Book {
       disableFlipByClick: false,
     });
 
-    this.flip.loadFromHTML(this.el.querySelectorAll('.book-page'));
+    this.stFlip.loadFromHTML(this.el.querySelectorAll('.book-page'));
 
-    this.flip.on('flip', (e) => {
+    this.stFlip.on('flip', (e) => {
       this.cur = e.data;
       if (typeof this.onChange === 'function') {
         this.onChange(this.cur);
       }
     });
 
-    this.flip.on('changeState', (e) => {
+    this.stFlip.on('changeState', (e) => {
       this.busy = e.data !== 'read';
     });
   }
 
   get count() {
-    return this.flip ? this.flip.getPageCount() : 0;
+    return this.stFlip ? this.stFlip.getPageCount() : 0;
   }
 
   show(i) {
-    if (!this.flip) return;
+    if (!this.stFlip) return;
     this.cur = clamp(i, 0, this.count - 1);
-    this.flip.turnToPage(this.cur);
+    this.stFlip.turnToPage(this.cur);
   }
 
   goTo(i) {
@@ -347,35 +347,35 @@ class Book {
   }
 
   flip(dir) {
-    if (!this.flip || this.busy) return;
+    if (!this.stFlip || this.busy) return;
     if (dir === 'fwd') {
-      this.flip.flipNext();
+      this.stFlip.flipNext();
     } else {
-      this.flip.flipPrev();
+      this.stFlip.flipPrev();
     }
   }
 
   tease() {
     // Corner peek cue
-    if (!this.flip || this.busy || this.cur >= this.count - 1) return;
+    if (!this.stFlip || this.busy || this.cur >= this.count - 1) return;
     try {
-      this.flip.flipNext('bottom');
+      this.stFlip.flipNext('bottom');
     } catch (e) {
       // ignore
     }
   }
 
   measure() {
-    if (!this.flip) return;
+    if (!this.stFlip) return;
     try {
       const w = this.el.clientWidth;
       const h = this.el.clientHeight;
       if (w && h) {
-        const s = this.flip.getSettings();
+        const s = this.stFlip.getSettings();
         s.width = Math.round(w);
         s.height = Math.round(h);
       }
-      this.flip.update();
+      this.stFlip.update();
     } catch (e) {
       // ignore
     }
@@ -401,16 +401,16 @@ function layout() {
   const envY = sh - envH - Math.max(sh * 0.02, 10);
   Object.assign(envelope.style, { left: `${envX}px`, top: `${envY}px`, width: `${envW}px`, height: `${envH}px` });
 
-  // Increased card size for phones: fills up to 95% width while fitting comfortably vertically
-  const topSpace = 54;
-  const belowSpace = 86; // 12px gap + ~42px location box + ~32px bottom breathing room
+  // Top space accommodates music buttons and top safe area
+  const topSpace = Math.max(54, Math.min(62, Math.round(sh * 0.08)));
+  // Reserve space for location drawer (header + address + map link + RSVP form + bottom safe area)
+  const belowSpace = Math.max(136, Math.min(156, Math.round(sh * 0.22)));
   const maxCh = sh - topSpace - belowSpace;
   const maxCwByH = maxCh * CARD_RATIO;
-  const cw = Math.floor(Math.min(sw - 16, sw * 0.95, maxCwByH));
+  const cw = Math.floor(Math.min(sw - 20, sw * 0.92, maxCwByH));
   const ch = Math.round(cw / CARD_RATIO);
   const cx = Math.round((sw - cw) / 2);
-  const remH = sh - topSpace - (ch + 12 + 42);
-  const cy = Math.round(topSpace + Math.max(0, Math.min(22, remH * 0.22)));
+  const cy = topSpace;
   Object.assign(card.style, { left: `${cx}px`, top: `${cy}px`, width: `${cw}px`, height: `${ch}px` });
 
   // where the card sits while inside the envelope
@@ -424,8 +424,9 @@ function layout() {
   };
   for (const [k, v] of Object.entries(vars)) stage.style.setProperty(k, v);
 
-  // Location box moved directly above, right below the card
-  Object.assign(venueBox.style, { left: `${cx}px`, top: `${cy + ch + 12}px`, width: `${cw}px` });
+  // Position venueBox directly below the card with a clean gap, clamped so it never overflows bottom
+  const venueTop = Math.min(cy + ch + 8, sh - 145);
+  Object.assign(venueBox.style, { left: `${cx}px`, top: `${venueTop}px`, width: `${cw}px` });
   if (book) book.measure();
 }
 
@@ -623,11 +624,65 @@ function init() {
     }
   });
 
+  // Turn pages when scrolling up or down (wheel / trackpad)
+  let scrollCooldown = false;
+  window.addEventListener('wheel', (e) => {
+    if (state !== 'reading' || !book || book.busy || scrollCooldown) return;
+    if (e.target.closest('#venueBox')) return; // Let venue drawer scroll internally if needed
+    if (Math.abs(e.deltaY) < 22 || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+
+    scrollCooldown = true;
+    if (e.deltaY > 0) {
+      book.flip('fwd');
+    } else {
+      book.flip('back');
+    }
+    setTimeout(() => { scrollCooldown = false; }, 600);
+  }, { passive: true });
+
+  // Turn pages when scrolling/swiping up or down on touchscreens
+  let touchStartY = 0;
+  let touchStartX = 0;
+  let touchStartTime = 0;
+  let isTouchOnVenue = false;
+
+  window.addEventListener('touchstart', (e) => {
+    if (state !== 'reading' || !book || book.busy) return;
+    if (e.touches.length > 0) {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      touchStartTime = Date.now();
+      isTouchOnVenue = !!e.target.closest('#venueBox');
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', (e) => {
+    if (state !== 'reading' || !book || book.busy || scrollCooldown || isTouchOnVenue) return;
+    if (e.changedTouches.length > 0) {
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dt = Date.now() - touchStartTime;
+
+      // Vertical swipe: significant Y movement, primarily vertical, within reasonable duration
+      if (Math.abs(dy) > 38 && Math.abs(dy) > Math.abs(dx) * 1.15 && dt < 800) {
+        scrollCooldown = true;
+        if (dy < 0) {
+          // Swiped up (scrolling down) -> next page
+          book.flip('fwd');
+        } else {
+          // Swiped down (scrolling up) -> previous page
+          book.flip('back');
+        }
+        setTimeout(() => { scrollCooldown = false; }, 600);
+      }
+    }
+  }, { passive: true });
+
   addEventListener('keydown', (e) => {
     if (state === 'closed' && (e.key === 'Enter' || e.key === ' ')) openEnvelope();
     if (state !== 'reading') return;
-    if (e.key === 'ArrowRight') book.flip('fwd');
-    if (e.key === 'ArrowLeft') book.flip('back');
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown') book.flip('fwd');
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') book.flip('back');
     if (e.key === 'Escape') closeEnvelope();
   });
   setTheme(0);
