@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <main class="stage" id="stage">
@@ -43,6 +43,29 @@
 
       <div class="card" id="card">
         <div class="book" id="book"></div>
+
+        <!-- Carousel navigation arrows -->
+        <button class="carousel-arrow prev is-disabled" id="carouselPrevBtn" type="button" aria-label="Previous card page" title="Previous page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <button class="carousel-arrow next" id="carouselNextBtn" type="button" aria-label="Next card page" title="Next page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </button>
+
+        <!-- Card Zoom trigger button -->
+        <button class="card-zoom-btn" id="cardZoomBtn" type="button" aria-label="Zoom into card" title="Zoom into card">
+          <svg class="zoom-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="11" y1="8" x2="11" y2="14"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+          <span class="zoom-btn-label">Zoom</span>
+        </button>
       </div>
     </div>
 
@@ -106,7 +129,46 @@
     </div>
   </main>
 
+  <!-- Fullscreen Card Zoom Lightbox Modal -->
+  <div class="zoom-modal" id="zoomModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Enlarged card viewer">
+    <div class="zoom-backdrop" id="zoomBackdrop"></div>
+    
+    <div class="zoom-header">
+      <div class="zoom-badge" id="zoomPageBadge">1 / 10</div>
+      <div class="zoom-controls">
+        <button class="zoom-ctrl-btn" id="zoomOutBtn" type="button" aria-label="Zoom out" title="Zoom out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button class="zoom-ctrl-btn zoom-scale-btn" id="zoomResetBtn" type="button" aria-label="Reset zoom to 100%" title="Reset zoom">
+          <span id="zoomLevelText">100%</span>
+        </button>
+        <button class="zoom-ctrl-btn" id="zoomInBtn" type="button" aria-label="Zoom in" title="Zoom in">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+        <button class="zoom-close-btn" id="zoomCloseBtn" type="button" aria-label="Close zoom viewer" title="Close (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="zoom-viewport" id="zoomViewport">
+      <div class="zoom-canvas" id="zoomCanvas">
+        <img class="zoom-image" id="zoomImage" src="" alt="Zoomed wedding invitation card" draggable="false">
+      </div>
+    </div>
+
+    <!-- Carousel arrows inside Zoom viewer -->
+    <button class="zoom-arrow prev" id="zoomPrevBtn" type="button" aria-label="Previous page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <button class="zoom-arrow next" id="zoomNextBtn" type="button" aria-label="Next page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+    </button>
+
+    <div class="zoom-tip">Pinch or scroll to zoom &bull; Drag to pan &bull; Double-tap to toggle zoom</div>
+  </div>
+
   <script src="page-flip.browser.js"></script>
-  <script src="script.js?v=4"></script>
+  <script src="script.js?v=5"></script>
 </body>
 </html>

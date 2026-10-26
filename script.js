@@ -557,6 +557,7 @@ async function openEnvelope() {
 async function closeEnvelope() {
   if (state !== 'reading') return;
   state = 'closing';
+  closeZoom();
   document.body.classList.remove('is-reading-mode');
   stage.style.minHeight = '';
   window.scrollTo({ top: 0, behavior: 'instant' });
@@ -655,9 +656,146 @@ function toggleVenue(open = !venueBox.classList.contains('is-open')) {
   setTimeout(updateStageHeight, 460);
 }
 
+let currentPageIndex = 0;
+
+function updateCarouselArrows() {
+  const prevBtn = $('carouselPrevBtn');
+  const nextBtn = $('carouselNextBtn');
+  if (prevBtn) {
+    prevBtn.classList.toggle('is-disabled', currentPageIndex <= 0);
+    prevBtn.setAttribute('aria-disabled', String(currentPageIndex <= 0));
+  }
+  if (nextBtn) {
+    nextBtn.classList.toggle('is-disabled', currentPageIndex >= CONFIG.events.length - 1);
+    nextBtn.setAttribute('aria-disabled', String(currentPageIndex >= CONFIG.events.length - 1));
+  }
+}
+
 function onPageChange(i) {
+  currentPageIndex = i;
   setTheme(i);
   updateStageHeight();
+  updateCarouselArrows();
+  if (isZoomOpen) {
+    zoomIndex = i;
+    updateZoomModalView();
+  }
+}
+
+/* =====================================================================
+   Zoom Lightbox Viewer
+   ===================================================================== */
+const zoomModal = $('zoomModal');
+const zoomBackdrop = $('zoomBackdrop');
+const zoomCanvas = $('zoomCanvas');
+const zoomImage = $('zoomImage');
+const zoomPageBadge = $('zoomPageBadge');
+const zoomLevelText = $('zoomLevelText');
+const zoomViewport = $('zoomViewport');
+const zoomInBtn = $('zoomInBtn');
+const zoomOutBtn = $('zoomOutBtn');
+const zoomResetBtn = $('zoomResetBtn');
+const zoomCloseBtn = $('zoomCloseBtn');
+const zoomPrevBtn = $('zoomPrevBtn');
+const zoomNextBtn = $('zoomNextBtn');
+const cardZoomBtn = $('cardZoomBtn');
+
+let isZoomOpen = false;
+let zoomIndex = 0;
+let zoomScale = 1.0;
+let zoomPanX = 0;
+let zoomPanY = 0;
+let isDraggingZoom = false;
+let dragStartX = 0;
+let dragStartY = 0;
+let startPanX = 0;
+let startPanY = 0;
+let initialPinchDist = 0;
+let initialPinchScale = 1.0;
+
+function applyZoomTransform(animate = true) {
+  if (!zoomCanvas) return;
+  if (!animate) {
+    zoomCanvas.classList.add('no-transition');
+  } else {
+    zoomCanvas.classList.remove('no-transition');
+  }
+
+  // Clamp pan so image doesn't fly out of view
+  if (zoomScale <= 1.02) {
+    zoomPanX = 0;
+    zoomPanY = 0;
+    if (zoomViewport) zoomViewport.classList.remove('is-zoomed');
+  } else {
+    if (zoomViewport) zoomViewport.classList.add('is-zoomed');
+    const maxPanX = Math.max(0, (window.innerWidth * (zoomScale - 1)) / 1.6);
+    const maxPanY = Math.max(0, (window.innerHeight * (zoomScale - 1)) / 1.6);
+    zoomPanX = clamp(zoomPanX, -maxPanX, maxPanX);
+    zoomPanY = clamp(zoomPanY, -maxPanY, maxPanY);
+  }
+
+  zoomCanvas.style.transform = `translate3d(${zoomPanX}px, ${zoomPanY}px, 0px) scale(${zoomScale})`;
+  if (zoomLevelText) {
+    zoomLevelText.textContent = `${Math.round(zoomScale * 100)}%`;
+  }
+}
+
+function setZoomScale(targetScale, animate = true) {
+  zoomScale = clamp(targetScale, 1.0, 3.2);
+  applyZoomTransform(animate);
+}
+
+function updateZoomModalView() {
+  if (!zoomModal || !CONFIG.events[zoomIndex]) return;
+  const ev = CONFIG.events[zoomIndex];
+  if (zoomImage) zoomImage.src = ev.cardImage;
+  if (zoomPageBadge) zoomPageBadge.textContent = `${zoomIndex + 1} / ${CONFIG.events.length}`;
+
+  if (zoomPrevBtn) {
+    zoomPrevBtn.classList.toggle('is-disabled', zoomIndex <= 0);
+  }
+  if (zoomNextBtn) {
+    zoomNextBtn.classList.toggle('is-disabled', zoomIndex >= CONFIG.events.length - 1);
+  }
+
+  zoomScale = 1.0;
+  zoomPanX = 0;
+  zoomPanY = 0;
+  applyZoomTransform(false);
+}
+
+function openZoom(index = currentPageIndex) {
+  if (!zoomModal) return;
+  isZoomOpen = true;
+  zoomIndex = clamp(index, 0, CONFIG.events.length - 1);
+  zoomModal.classList.add('is-open');
+  zoomModal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('is-zoomed');
+  updateZoomModalView();
+}
+
+function closeZoom() {
+  if (!zoomModal || !isZoomOpen) return;
+  isZoomOpen = false;
+  zoomModal.classList.remove('is-open');
+  zoomModal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('is-zoomed');
+  zoomScale = 1.0;
+  zoomPanX = 0;
+  zoomPanY = 0;
+  applyZoomTransform(false);
+}
+
+function flipZoom(dir) {
+  const nextIdx = dir === 'fwd' ? zoomIndex + 1 : zoomIndex - 1;
+  if (nextIdx >= 0 && nextIdx < CONFIG.events.length) {
+    zoomIndex = nextIdx;
+    updateZoomModalView();
+    if (book && typeof book.show === 'function') {
+      book.show(zoomIndex);
+      onPageChange(zoomIndex);
+    }
+  }
 }
 
 /* ---------- init ---------- */
@@ -689,9 +827,37 @@ function init() {
   $('closeBtn').addEventListener('click', () => { toggleVenue(false); closeEnvelope(); });
   $('venueHead').addEventListener('click', () => toggleVenue());
 
-  // Tap left side of card to go back, tap right side to go forward
+  // Carousel navigation arrows on card
+  const carouselPrevBtn = $('carouselPrevBtn');
+  const carouselNextBtn = $('carouselNextBtn');
+  if (carouselPrevBtn) {
+    carouselPrevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state !== 'reading' || !book || book.busy) return;
+      book.flip('back');
+    });
+  }
+  if (carouselNextBtn) {
+    carouselNextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state !== 'reading' || !book || book.busy) return;
+      book.flip('fwd');
+    });
+  }
+
+  // Card Zoom button trigger
+  if (cardZoomBtn) {
+    cardZoomBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state !== 'reading') return;
+      openZoom(currentPageIndex);
+    });
+  }
+
+  // Tap left side of card to go back, tap right side to go forward (ignore buttons)
   card.addEventListener('click', (e) => {
     if (state !== 'reading' || !book || book.busy) return;
+    if (e.target.closest('.carousel-arrow') || e.target.closest('.card-zoom-btn')) return;
     const rect = card.getBoundingClientRect();
     const x = e.clientX - rect.left;
     if (x < rect.width * 0.38) {
@@ -701,6 +867,95 @@ function init() {
     }
   });
 
+  // Zoom Modal controls & gestures
+  if (zoomCloseBtn) zoomCloseBtn.addEventListener('click', closeZoom);
+  if (zoomBackdrop) zoomBackdrop.addEventListener('click', closeZoom);
+  if (zoomPrevBtn) zoomPrevBtn.addEventListener('click', (e) => { e.stopPropagation(); flipZoom('back'); });
+  if (zoomNextBtn) zoomNextBtn.addEventListener('click', (e) => { e.stopPropagation(); flipZoom('fwd'); });
+
+  if (zoomInBtn) zoomInBtn.addEventListener('click', () => setZoomScale(zoomScale + 0.35));
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => setZoomScale(zoomScale - 0.35));
+  if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => setZoomScale(zoomScale > 1.1 ? 1.0 : 2.0));
+
+  if (zoomViewport) {
+    // Wheel zoom inside viewer
+    zoomViewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = -Math.sign(e.deltaY) * 0.25;
+      setZoomScale(zoomScale + delta);
+    }, { passive: false });
+
+    // Double tap/click to toggle zoom
+    let lastTapTime = 0;
+    zoomViewport.addEventListener('click', (e) => {
+      if (e.target.closest('.zoom-header') || e.target.closest('.zoom-arrow')) return;
+      const now = Date.now();
+      if (now - lastTapTime < 320) {
+        setZoomScale(zoomScale > 1.1 ? 1.0 : 2.0);
+        lastTapTime = 0;
+      } else {
+        lastTapTime = now;
+      }
+    });
+
+    // Mouse drag pan when zoomed
+    zoomViewport.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.zoom-header') || e.target.closest('.zoom-arrow')) return;
+      if (zoomScale > 1.02) {
+        isDraggingZoom = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        startPanX = zoomPanX;
+        startPanY = zoomPanY;
+        zoomViewport.classList.add('is-dragging');
+        zoomCanvas.classList.add('no-transition');
+        try { zoomViewport.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      }
+    });
+
+    zoomViewport.addEventListener('pointermove', (e) => {
+      if (!isDraggingZoom) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      zoomPanX = startPanX + dx;
+      zoomPanY = startPanY + dy;
+      applyZoomTransform(false);
+    });
+
+    const stopZoomDrag = (e) => {
+      if (!isDraggingZoom) return;
+      isDraggingZoom = false;
+      zoomViewport.classList.remove('is-dragging');
+      zoomCanvas.classList.remove('no-transition');
+      applyZoomTransform(true);
+      try { zoomViewport.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    };
+    zoomViewport.addEventListener('pointerup', stopZoomDrag);
+    zoomViewport.addEventListener('pointercancel', stopZoomDrag);
+
+    // Touch pinch to zoom
+    zoomViewport.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        initialPinchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        initialPinchScale = zoomScale;
+      }
+    }, { passive: true });
+
+    zoomViewport.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && initialPinchDist > 0) {
+        const currentDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = currentDist / initialPinchDist;
+        setZoomScale(initialPinchScale * factor, false);
+      }
+    }, { passive: true });
+  }
+
   // Swipe horizontally to flip pages (swipe left -> fwd, swipe right -> back)
   // Vertical swiping and wheel will scroll the page smoothly without interception
   let touchStartX = 0;
@@ -709,7 +964,7 @@ function init() {
   let isSwipeCooldown = false;
 
   window.addEventListener('touchstart', (e) => {
-    if (state !== 'reading' || !book || book.busy) return;
+    if (state !== 'reading' || !book || book.busy || isZoomOpen) return;
     if (e.touches.length > 0) {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
@@ -718,7 +973,7 @@ function init() {
   }, { passive: true });
 
   window.addEventListener('touchend', (e) => {
-    if (state !== 'reading' || !book || book.busy || isSwipeCooldown) return;
+    if (state !== 'reading' || !book || book.busy || isSwipeCooldown || isZoomOpen) return;
     if (e.changedTouches.length > 0) {
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
@@ -745,13 +1000,25 @@ function init() {
   }
 
   addEventListener('keydown', (e) => {
+    if (isZoomOpen) {
+      if (e.key === 'Escape') closeZoom();
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') flipZoom('fwd');
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') flipZoom('back');
+      if (e.key === '+' || e.key === '=') setZoomScale(zoomScale + 0.35);
+      if (e.key === '-' || e.key === '_') setZoomScale(zoomScale - 0.35);
+      if (e.key === '0') setZoomScale(1.0);
+      return;
+    }
+
     if (state === 'closed' && (e.key === 'Enter' || e.key === ' ')) openEnvelope();
     if (state !== 'reading') return;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'PageDown') book.flip('fwd');
     if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp') book.flip('back');
     if (e.key === 'Escape') closeEnvelope();
   });
+
   setTheme(0);
+  updateCarouselArrows();
 
   // ?open → open automatically (handy for previews)
   if (new URLSearchParams(location.search).has('open')) setTimeout(openEnvelope, 1400);
