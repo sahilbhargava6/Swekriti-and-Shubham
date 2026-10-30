@@ -264,9 +264,7 @@ function illustrationSVG(id) {
 
 function pageHTML(ev, i) {
   if (ev.cardImage) {
-    const isInitial = i <= 1;
-    const src = isInitial ? esc(ev.cardImage) : '';
-    return `<img class="full-card" src="${src}" data-src="${esc(ev.cardImage)}" alt="${esc(ev.title)} invitation" draggable="false">`;
+    return `<img class="full-card" src="${esc(ev.cardImage)}" alt="${esc(ev.title)} invitation" draggable="false">`;
   }
   const t = THEMES[ev.theme] || THEMES.haldi;
   const id = `p${i}`;
